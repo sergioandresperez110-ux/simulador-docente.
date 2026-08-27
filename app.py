@@ -56,7 +56,7 @@ def generar_pregunta_cnsc(area):
     """
     prompt = f"Genera una pregunta inédita para la categoría: '{area}'."
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-1.5-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
@@ -69,7 +69,7 @@ def generar_pregunta_cnsc(area):
 def generar_leccion_estudio(area, tema):
     prompt = f"Crea un módulo de estudio condensado sobre: '{tema}' en el área de '{area}'. Incluye resumen normativo/conceptual, tips para el examen y un ejemplo resuelto."
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-1.5-flash",
         contents=prompt,
     )
     return response.text
