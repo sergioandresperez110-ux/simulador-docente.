@@ -1,4 +1,6 @@
 import json
+import datetime
+import pandas as pd
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -10,6 +12,18 @@ st.set_page_config(
 )
 
 st.title("📚 Asistente IA - Concurso Docente CNSC 2026")
+
+# --- INICIALIZACIÓN DEL HISTORIAL (BASE DE DATOS TEMPORAL) ---
+if "pregunta_actual" not in st.session_state:
+    st.session_state.pregunta_actual = None
+if "puntaje" not in st.session_state:
+    st.session_state.puntaje = 0
+if "total_respondidas" not in st.session_state:
+    st.session_state.total_respondidas = 0
+if "historial_simulacros" not in st.session_state:
+    st.session_state.historial_simulacros = []
+if "historial_temas" not in st.session_state:
+    st.session_state.historial_temas = []
 
 with st.sidebar:
     st.header("Configuración")
@@ -26,20 +40,14 @@ with st.sidebar:
             "Conocimientos Específicos: Primaria / General",
         ],
     )
-    modo = st.radio("Modo:", ["Simulacro de Preguntas", "Estudio Guiado"])
+    # NUEVO MODO AÑADIDO AL MENÚ
+    modo = st.radio("Modo de uso:", ["Simulacro de Preguntas", "Estudio Guiado", "📊 Mi Progreso (Historial)"])
 
 if not api_key:
     st.warning("Por favor, ingresa tu API Key de Google Gemini en el panel lateral para comenzar.")
     st.stop()
 
 client = genai.Client(api_key=api_key)
-
-if "pregunta_actual" not in st.session_state:
-    st.session_state.pregunta_actual = None
-if "puntaje" not in st.session_state:
-    st.session_state.puntaje = 0
-if "total_respondidas" not in st.session_state:
-    st.session_state.total_respondidas = 0
 
 def generar_pregunta_cnsc(area):
     system_instruction = """
@@ -54,7 +62,7 @@ def generar_pregunta_cnsc(area):
         "justificacion": "Explicación detallada de la respuesta correcta."
     }
     """
-    prompt = f"Genera una pregunta inédita para la categoría: '{area}'."
+    prompt = f"Genera una pregunta inédita y compleja para la categoría: '{area}'."
     response = client.models.generate_content(
         model="gemini-3-flash-preview",
         contents=prompt,
@@ -74,11 +82,12 @@ def generar_leccion_estudio(area, tema):
     )
     return response.text
 
+# --- MÓDULO 1: SIMULACRO ---
 if modo == "Simulacro de Preguntas":
     st.subheader(f"Simulacro: {area_evaluacion}")
     col1, col2 = st.columns([3, 1])
     with col2:
-        st.metric("Puntaje", f"{st.session_state.puntaje} / {st.session_state.total_respondidas}")
+        st.metric("Puntaje Acumulado", f"{st.session_state.puntaje} / {st.session_state.total_respondidas}")
         if st.button("Generar Nueva Pregunta", use_container_width=True):
             with st.spinner("Redactando caso tipo CNSC..."):
                 st.session_state.pregunta_actual = generar_pregunta_cnsc(area_evaluacion)
@@ -88,25 +97,73 @@ if modo == "Simulacro de Preguntas":
         q = st.session_state.pregunta_actual
         st.markdown(f"**Contexto:**\n\n>{q['contexto']}")
         st.markdown(f"**Enunciado:** {q['enunciado']}")
+        
         opcion_seleccionada = st.radio(
             "Selecciona la opción:",
             options=list(q["opciones"].keys()),
             format_func=lambda x: f"{x}. {q['opciones'][x]}",
         )
+        
         if st.button("Enviar Respuesta"):
+            es_correcta = opcion_seleccionada == q["respuesta_correcta"]
             st.session_state.total_respondidas += 1
-            if opcion_seleccionada == q["respuesta_correcta"]:
+            
+            if es_correcta:
                 st.success(f"¡Correcto! La respuesta es la {q['respuesta_correcta']}.")
                 st.session_state.puntaje += 1
             else:
                 st.error(f"Incorrecto. Era la {q['respuesta_correcta']}.")
             st.info(f"**Justificación:** {q['justificacion']}")
+            
+            # GUARDAR EN EL HISTORIAL
+            registro = {
+                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "Área": area_evaluacion,
+                "Resultado": "✅ Correcto" if es_correcta else "❌ Incorrecto",
+                "Tema/Contexto": q['contexto'][:60] + "..."
+            }
+            st.session_state.historial_simulacros.append(registro)
+            st.session_state.pregunta_actual = None # Limpia para obligar a generar otra
     else:
-        st.info("Haz clic en 'Generar Nueva Pregunta' para iniciar.")
+        st.info("Haz clic en 'Generar Nueva Pregunta' para iniciar el reto.")
 
-else:
+# --- MÓDULO 2: ESTUDIO GUIADO ---
+elif modo == "Estudio Guiado":
     st.subheader(f"Módulo de Estudio: {area_evaluacion}")
-    tema_estudio = st.text_input("Tema específico a repasar:", placeholder="Ej: Ley 1620, Fracciones...")
+    tema_estudio = st.text_input("Tema específico a repasar:", placeholder="Ej: Ley 1620, Fracciones, Pensamiento Computacional...")
+    
     if st.button("Generar Material de Estudio") and tema_estudio:
-        with st.spinner("Generando contenido..."):
-            st.markdown(generar_leccion_estudio(area_evaluacion, tema_estudio))
+        with st.spinner("Estructurando contenido..."):
+            contenido = generar_leccion_estudio(area_evaluacion, tema_estudio)
+            st.markdown(contenido)
+            
+            # GUARDAR EN EL HISTORIAL
+            registro_tema = {
+                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "Área": area_evaluacion,
+                "Tema Estudiado": tema_estudio
+            }
+            st.session_state.historial_temas.append(registro_tema)
+
+# --- MÓDULO 3: HISTORIAL Y TRAZABILIDAD ---
+elif modo == "📊 Mi Progreso (Historial)":
+    st.subheader("Trazabilidad de Estudio")
+    st.write("Monitorea tu rendimiento para identificar las áreas del Concurso Docente que necesitan más refuerzo.")
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        st.markdown("### 📝 Simulacros Realizados")
+        if st.session_state.historial_simulacros:
+            df_simulacros = pd.DataFrame(st.session_state.historial_simulacros)
+            st.dataframe(df_simulacros, use_container_width=True)
+        else:
+            st.info("Aún no has respondido preguntas de simulacro.")
+            
+    with col_b:
+        st.markdown("### 📖 Temas Estudiados")
+        if st.session_state.historial_temas:
+            df_temas = pd.DataFrame(st.session_state.historial_temas)
+            st.dataframe(df_temas, use_container_width=True)
+        else:
+            st.info("Aún no has generado material de estudio.")
