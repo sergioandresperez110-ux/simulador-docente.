@@ -25,7 +25,7 @@ st.markdown("""
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v10.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v9.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -155,14 +155,15 @@ REGLAS ESTRICTAS E INQUEBRANTABLES:
 1. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto.
 2. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva.
 3. PASO A PASO DETALLADO: Muestra el procedimiento matemático o legal línea por línea.
-4. FORMATO OBLIGATORIO: ESTÁ ESTRICTAMENTE PROHIBIDO usar formato matemático complejo. Usa ÚNICAMENTE texto plano y espacios claros para que el texto sea completamente legible en la pantalla sin amontonarse.
+4. FORMATO OBLIGATORIO: ESTÁ ESTRICTAMENTE PROHIBIDO usar código LaTeX (como $, \mathbf, \times, \frac, \div). Usa ÚNICAMENTE texto plano y espacios claros (ejemplo: 400 x 0.15 = 60) para evitar que las palabras se amontonen.
 """
 
 def obtener_instruccion_json(tema_exacto):
+    """Función de f-string segura para evitar el choque de llaves en Python"""
     return f"""
     Eres un evaluador de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
     Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
-    Las justificaciones DEBEN ser detalladas en texto plano sin formato matemático complejo.
+    Las justificaciones DEBEN ser detalladas en texto plano (SIN LaTeX ni símbolos matemáticos).
     Formato:
     [
       {{
@@ -204,26 +205,19 @@ def generar_mini_simulacro_json(tema_exacto):
         try:
             resp_json = client.models.generate_content(
                 model="gemini-3-flash-preview",
-                contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}. Solo entrega la lista de objetos JSON.",
+                contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}",
                 config=types.GenerateContentConfig(
                     system_instruction=obtener_instruccion_json(tema_exacto),
                     response_mime_type="application/json",
                     temperature=0.7
                 )
             )
-            
-            texto_bruto = resp_json.text
-            inicio_json = texto_bruto.find('[')
-            fin_json = texto_bruto.rfind(']') + 1
-            if inicio_json != -1 and fin_json != 0:
-                texto_limpio = texto_bruto[inicio_json:fin_json]
-            else:
-                texto_limpio = texto_bruto.replace("```json", "").replace("```", "").strip()
-                
+            # Limpiador técnico para arreglar el JSON de Gemini
+            texto_limpio = resp_json.text.replace("```json", "").replace("```", "").strip()
             st.session_state.preguntas_mini = json.loads(texto_limpio)
             return True
         except Exception as e:
-            st.error(f"Error técnico de la IA al construir las preguntas. Por favor, presiona el botón nuevamente.")
+            st.error(f"Error técnico de la IA al construir las preguntas. Por favor, presiona el botón nuevamente. Detalle: {str(e)}")
             return False
 
 # --- MÓDULO 1: TEMARIO DETALLADO (TEMA A TEMA) ---
@@ -270,7 +264,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             if not st.session_state.ejemplos_extra:
                 if st.button("➕ Necesito más ejemplos resueltos", type="secondary"):
                     with st.spinner("Generando nuevos ejemplos avanzados en texto plano..."):
-                        prompt_ejemplos = f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Muestra la solución paso a paso en texto plano."
+                        prompt_ejemplos = f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Muestra la solución paso a paso en texto plano, SIN usar comandos matemáticos LaTeX."
                         resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt_ejemplos)
                         st.session_state.ejemplos_extra = resp.text
                     st.rerun()
@@ -339,15 +333,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                     model="gemini-3-flash-preview", contents="Genera 20 preguntas JSON puras",
                     config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
                 )
-                
-                texto_bruto = response.text
-                inicio_json = texto_bruto.find('[')
-                fin_json = texto_bruto.rfind(']') + 1
-                if inicio_json != -1 and fin_json != 0:
-                    texto_limpio = texto_bruto[inicio_json:fin_json]
-                else:
-                    texto_limpio = texto_bruto.replace("```json", "").replace("```", "").strip()
-                
+                texto_limpio = response.text.replace("```json", "").replace("```", "").strip()
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
             except Exception:
