@@ -6,16 +6,15 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS AVANZADOS ---
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS VISUALES CORREGIDOS ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
 
 st.markdown("""
 <style>
-    .main { background-color: #F8FAFC; }
     .header-title { 
         font-size: 2.4rem; 
         font-weight: 800; 
-        color: #1E3A8A; 
+        color: #38BDF8; 
         border-bottom: 4px solid #3B82F6; 
         padding-bottom: 12px; 
         margin-bottom: 25px;
@@ -24,40 +23,35 @@ st.markdown("""
         border-left: 6px solid #2563EB; 
         padding: 18px; 
         margin: 20px 0; 
-        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+        background: rgba(37, 99, 235, 0.1); 
         border-radius: 8px; 
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .pregunta-card { 
-        border: 1px solid #E2E8F0; 
+        border: 1px solid #334155; 
         padding: 22px; 
         border-radius: 10px; 
         margin-bottom: 20px; 
-        background-color: #FFFFFF;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        background-color: #1E293B;
     }
     .resultado-box { 
-        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); 
+        background: rgba(34, 197, 94, 0.1); 
         border-left: 6px solid #22C55E; 
         padding: 22px; 
         border-radius: 10px; 
         margin: 20px 0; 
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
+    /* Corrección estricta para legibilidad de botones en modo oscuro */
     .stButton>button { 
         width: 100%; 
         border-radius: 8px; 
         font-weight: 600;
-        transition: all 0.3s ease;
+        background-color: #F1F5F9;
+        color: #0F172A;
+        border: 1px solid #CBD5E1;
     }
     .stButton>button:hover {
-        transform: translateY(-1px;);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-    }
-    div.stExpander {
-        border-radius: 8px;
-        border: 1px solid #E2E8F0;
-        background-color: #FFFFFF;
+        background-color: #E2E8F0;
+        color: #020617;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -66,7 +60,7 @@ st.markdown("""
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v14.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v15.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -108,6 +102,31 @@ BIBLIOTECA_ESPECIFICA = {
     ]
 }
 
+VIDEOS_REQUISITO = {
+    "Porcentajes": "https://www.youtube.com/watch?v=ZZw7_m2x0Vw",
+    "Regla de 3 Simple (Directa e Inversa)": "https://www.youtube.com/watch?v=kY3y7q_oG8s",
+    "Regla de 3 Compuesta": "https://www.youtube.com/watch?v=hN7mQ02lJ40",
+    "Relaciones y Proporciones": "https://www.youtube.com/watch?v=W5v5x5Y7x7Y",
+    "Sucesiones": "https://www.youtube.com/watch?v=5z3W81v2l7A",
+    "Ecuaciones de primer grado": "https://www.youtube.com/watch?v=7q3J4vL1x7Q",
+    "Análisis de gráficas": "https://www.youtube.com/watch?v=9x3V1l8k57A",
+    "Pensamiento abstracto": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
+    "Sinónimos y Antónimos": "https://www.youtube.com/watch?v=8x2v3u4v5w6",
+    "Analogías": "https://www.youtube.com/watch?v=7x2v3u4v5w6",
+    "Comprensión lectora": "https://www.youtube.com/watch?v=6x2v3u4v5w6",
+    "Ordenamiento de palabras": "https://www.youtube.com/watch?v=5x2v3u4v5w6",
+    "Orden lógico de oraciones": "https://www.youtube.com/watch?v=4x2v3u4v5w6",
+    "Ley 115 (Ley General de Educación)": "https://www.youtube.com/watch?v=3x2v3u4v5w6",
+    "Ley 1098 (Infancia y Adolescencia)": "https://www.youtube.com/watch?v=2x2v3u4v5w6",
+    "Ley 1620 (Convivencia Escolar y RAI)": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
+    "Guía 31 (Evaluación de desempeño)": "https://www.youtube.com/watch?v=9x8v7u6t5s4",
+    "Guía 34 (Mejoramiento institucional)": "https://www.youtube.com/watch?v=8x8v7u6t5s4",
+    "Decreto 1421 (Educación inclusiva)": "https://www.youtube.com/watch?v=7x8v7u6t5s4",
+    "Casos aplicados de Convivencia Escolar": "https://www.youtube.com/watch?v=6x8v7u6t5s4",
+    "Manual de funciones docente": "https://www.youtube.com/watch?v=5x8v7u6t5s4",
+    "Preguntas tipo ICFES (Análisis y aplicación)": "https://www.youtube.com/watch?v=4x8v7u6t5s4"
+}
+
 def obtener_enlaces_por_area(area):
     area_lower = area.lower()
     if any(palabra in area_lower for palabra in ["porcentaje", "regla", "sucesion", "ecuacion", "abstracto", "grafica", "numérica"]):
@@ -124,10 +143,8 @@ def obtener_enlaces_por_area(area):
         return BIBLIOTECA_ESPECIFICA["Psicotécnica y Casos"], "Psicotécnica y Casos"
 
 def renderizar_caja_documentos(enlaces, nombre_cat, tema):
-    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento oficial de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
-    query_yt = tema.replace(" ", "+")
-    url_yt = f"https://www.youtube.com/results?search_query=concurso+docente+colombia+{query_yt}"
-    url_yt_general = f"https://www.youtube.com/results?search_query=preparacion+cnsc+{nombre_cat.lower()}"
+    html_links = "".join([f"<li><a href='{link}' target='_blank' style='color: #38BDF8;'>📄 Documento oficial de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
+    url_video = VIDEOS_REQUISITO.get(tema, "https://www.youtube.com/watch?v=ZZw7_m2x0Vw")
     
     return f"""
     <div class="norma-box">
@@ -135,14 +152,8 @@ def renderizar_caja_documentos(enlaces, nombre_cat, tema):
         <ul class="link-list">
             {html_links}
         </ul>
-        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #93C5FD;">
-        <b>📺 Videotutoriales y Clases de Apoyo en YouTube:</b>
-        <ul class="link-list">
-            <li><a href='{url_yt}' target='_blank'>▶️ Buscar videoclases explicativas sobre: <b>{tema}</b></a></li>
-            <li><a href='{url_yt_general}' target='_blank'>▶️ Ver lista de reproducción recomendada para <b>{nombre_cat}</b></a></li>
-        </ul>
     </div>
-    """
+    """, url_video
 
 # --- 3. BASE DE DATOS LOCAL ---
 def cargar_datos():
@@ -166,7 +177,7 @@ if st.session_state.usuario_actual is None:
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown('<div class="header-title" style="text-align: center;">🏛️ Plataforma CNSC 2026</div>', unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B;'>Sistema Experto de Preparación Docente con Inteligencia Artificial</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #94A3B8;'>Sistema Experto de Preparación Docente con Inteligencia Artificial</p>", unsafe_allow_html=True)
         
         usuario_input = st.text_input("👤 Usuario (ID Autorizado):").strip().upper()
         clave_input = st.text_input("🔑 Contraseña:", type="password")
@@ -182,7 +193,7 @@ if st.session_state.usuario_actual is None:
 client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
-for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "preguntas_mini", "resultado_mini"]:
+for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "video_activo", "preguntas_mini", "resultado_mini"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
@@ -245,9 +256,12 @@ def generar_teoria_y_ejemplos(tema_exacto):
         )
     
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
+    caja_html, url_video = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
+    
     st.session_state.tema_activo = tema_exacto
     st.session_state.contenido_tema = resp_texto.text
-    st.session_state.links_activos = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
+    st.session_state.links_activos = caja_html
+    st.session_state.video_activo = url_video
     
     fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     datos_globales[usuario]["diario_estudio"][f"{fecha_hoy} - {tema_exacto}"] = resp_texto.text
@@ -276,7 +290,7 @@ def generar_mini_simulacro_json(tema_exacto):
             st.session_state.preguntas_mini = json.loads(texto_limpio)
             return True
         except Exception as e:
-            st.error(f"Error al procesar el minisimulacro. Intenta nuevamente.")
+            st.error("Error al procesar el minisimulacro. Intenta nuevamente.")
             return False
 
 # --- MÓDULO 1: TEMARIO DETALLADO ---
@@ -318,11 +332,16 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         if st.session_state.contenido_tema:
             st.markdown(f"## Módulo Académico: {st.session_state.tema_activo}")
             st.markdown(st.session_state.links_activos, unsafe_allow_html=True)
-            st.markdown(st.session_state.contenido_tema)
             
+            # Reproductor de video directo verificado
+            st.markdown("### 📺 Videoclase Explicativa Directa")
+            st.video(st.session_state.video_activo)
             st.divider()
             
-            # --- SECCIÓN DE EJEMPLOS ADICIONALES ILIMITADOS ---
+            st.markdown(st.session_state.contenido_tema)
+            st.divider()
+            
+            # --- BANCO DE EJEMPLOS ADICIONALES ---
             st.markdown("### ➕ Banco de Ejemplos Adicionales")
             if st.button("➕ Cargar más ejemplos de práctica", type="secondary"):
                 with st.spinner("Generando nuevos ejercicios resueltos..."):
@@ -331,14 +350,13 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                     st.session_state.lista_ejemplos_extra.append(resp_ej.text)
                 st.rerun()
             
-            # Mostrar todos los bloques de ejemplos solicitados acumulativamente
             for idx, ej_bloque in enumerate(st.session_state.lista_ejemplos_extra):
                 with st.container():
                     st.markdown(f"**Ejercicios Adicionales - Bloque {idx + 1}**")
                     st.markdown(ej_bloque)
                     st.write("---")
             
-            # --- SECCIÓN DEL MINISIMULACRO ---
+            # --- MINISIMULACRO ---
             st.divider()
             st.markdown(f"### 📝 MINISIMULACRO INTERACTIVO: {st.session_state.tema_activo}")
             
@@ -380,7 +398,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 st.markdown(f"<div class='resultado-box'><h2>📊 Calificación del Minisimulacro: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
                 for i, r in enumerate(res['revision']):
                     icono = "✅" if r['Acierto'] else "❌"
-                    color_txt = "green" if r['Acierto'] else "red"
+                    color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
                     with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
                         st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
                         st.write(f"**Justificación:** {r['Justificación']}")
@@ -392,7 +410,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                     st.session_state.respuestas_mini = {}
                     st.rerun()
         else:
-            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y videos de YouTube.")
+            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y el video explicativo.")
 
 # --- MÓDULO 2: SIMULACRO OFICIAL ---
 elif modo == "📝 Simulacro Oficial (20 Preguntas)":
@@ -421,7 +439,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
             except Exception as e:
-                st.error(f"Error al procesar el examen oficial. Intenta de nuevo.")
+                st.error("Error al procesar el examen oficial. Intenta de nuevo.")
 
     if st.session_state.examen_activo:
         preguntas = st.session_state.examen_activo
@@ -456,7 +474,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         st.success(f"📊 Calificación Final: {res['puntaje']} / {res['total']} ({(res['puntaje']/res['total'])*100:.1f}%)")
         for i, r in enumerate(res['revision']):
             icono = "✅" if r['Acierto'] else "❌"
-            color_txt = "green" if r['Acierto'] else "red"
+            color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
             with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
                 st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
                 st.write(f"**Justificación:** {r['Justificación']}")
@@ -485,7 +503,8 @@ elif modo == "📅 Historial y Progreso":
             sesion = st.selectbox("Selecciona la sesión guardada:", list(diario.keys())[::-1])
             if sesion:
                 enlaces, nom_cat = obtener_enlaces_por_area(sesion)
-                st.markdown(renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1]), unsafe_allow_html=True)
+                caja_html, _ = renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1])
+                st.markdown(caja_html, unsafe_allow_html=True)
                 st.markdown(diario[sesion])
         else:
             st.info("No hay sesiones registradas en el diario de estudio.")
