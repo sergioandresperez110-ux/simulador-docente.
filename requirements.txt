@@ -1,8 +1,3 @@
 streamlit
 google-genai
 pandas
-pypdf
-chromadb
-llama-index-core
-llama-index-llms-gemini
-llama-index-embeddings-gemini
