@@ -6,7 +6,7 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS VISUALES CORREGIDOS ---
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS VISUALES ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
 
 st.markdown("""
@@ -40,18 +40,18 @@ st.markdown("""
         border-radius: 10px; 
         margin: 20px 0; 
     }
-    /* Corrección estricta para legibilidad de botones en modo oscuro */
+    /* Estilo limpio para los botones del menú y acciones */
     .stButton>button { 
         width: 100%; 
         border-radius: 8px; 
         font-weight: 600;
-        background-color: #F1F5F9;
-        color: #0F172A;
-        border: 1px solid #CBD5E1;
+        background-color: #334155;
+        color: #F8FAFC;
+        border: 1px solid #475569;
     }
     .stButton>button:hover {
-        background-color: #E2E8F0;
-        color: #020617;
+        background-color: #475569;
+        color: #FFFFFF;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -60,7 +60,7 @@ st.markdown("""
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v15.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v16.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -102,7 +102,7 @@ BIBLIOTECA_ESPECIFICA = {
     ]
 }
 
-VIDEOS_REQUISITO = {
+VIDEOS_EXACTOS = {
     "Porcentajes": "https://www.youtube.com/watch?v=ZZw7_m2x0Vw",
     "Regla de 3 Simple (Directa e Inversa)": "https://www.youtube.com/watch?v=kY3y7q_oG8s",
     "Regla de 3 Compuesta": "https://www.youtube.com/watch?v=hN7mQ02lJ40",
@@ -144,7 +144,7 @@ def obtener_enlaces_por_area(area):
 
 def renderizar_caja_documentos(enlaces, nombre_cat, tema):
     html_links = "".join([f"<li><a href='{link}' target='_blank' style='color: #38BDF8;'>📄 Documento oficial de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
-    url_video = VIDEOS_REQUISITO.get(tema, "https://www.youtube.com/watch?v=ZZw7_m2x0Vw")
+    url_video_exacto = VIDEOS_EXACTOS.get(tema, "https://www.youtube.com/watch?v=ZZw7_m2x0Vw")
     
     return f"""
     <div class="norma-box">
@@ -152,8 +152,13 @@ def renderizar_caja_documentos(enlaces, nombre_cat, tema):
         <ul class="link-list">
             {html_links}
         </ul>
+        <hr style="margin: 12px 0; border: 0; border-top: 1px solid #3B82F6;">
+        <b>📺 Enlace Directo al Video de Estudio:</b>
+        <ul class="link-list">
+            <li><a href='{url_video_exacto}' target='_blank' style='color: #4ADE80; font-weight: bold;'>▶️ Ver videotutorial clave para dominar: {tema}</a></li>
+        </ul>
     </div>
-    """, url_video
+    """
 
 # --- 3. BASE DE DATOS LOCAL ---
 def cargar_datos():
@@ -193,7 +198,7 @@ if st.session_state.usuario_actual is None:
 client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
-for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "video_activo", "preguntas_mini", "resultado_mini"]:
+for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "preguntas_mini", "resultado_mini"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
@@ -256,12 +261,11 @@ def generar_teoria_y_ejemplos(tema_exacto):
         )
     
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
-    caja_html, url_video = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
+    caja_html = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
     
     st.session_state.tema_activo = tema_exacto
     st.session_state.contenido_tema = resp_texto.text
     st.session_state.links_activos = caja_html
-    st.session_state.video_activo = url_video
     
     fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     datos_globales[usuario]["diario_estudio"][f"{fecha_hoy} - {tema_exacto}"] = resp_texto.text
@@ -332,10 +336,6 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         if st.session_state.contenido_tema:
             st.markdown(f"## Módulo Académico: {st.session_state.tema_activo}")
             st.markdown(st.session_state.links_activos, unsafe_allow_html=True)
-            
-            # Reproductor de video directo verificado
-            st.markdown("### 📺 Videoclase Explicativa Directa")
-            st.video(st.session_state.video_activo)
             st.divider()
             
             st.markdown(st.session_state.contenido_tema)
@@ -410,7 +410,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                     st.session_state.respuestas_mini = {}
                     st.rerun()
         else:
-            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y el video explicativo.")
+            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y el link directo del video.")
 
 # --- MÓDULO 2: SIMULACRO OFICIAL ---
 elif modo == "📝 Simulacro Oficial (20 Preguntas)":
@@ -503,7 +503,7 @@ elif modo == "📅 Historial y Progreso":
             sesion = st.selectbox("Selecciona la sesión guardada:", list(diario.keys())[::-1])
             if sesion:
                 enlaces, nom_cat = obtener_enlaces_por_area(sesion)
-                caja_html, _ = renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1])
+                caja_html = renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1])
                 st.markdown(caja_html, unsafe_allow_html=True)
                 st.markdown(diario[sesion])
         else:
