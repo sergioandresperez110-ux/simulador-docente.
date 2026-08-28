@@ -25,7 +25,7 @@ st.markdown("""
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v6.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v7.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -53,7 +53,7 @@ BIBLIOTECA_ESPECIFICA = {
         "https://drive.google.com/file/d/1zxGPqEZzxHihSJe2uPNwRAlEGPHkfiPj/view?usp=sharing",
         "https://drive.google.com/file/d/1VfX_aBH-8aA_tvB9TbZEP66wVcd7fAW4/view?usp=sharing"
     ],
-    "Psicotécnica": [
+    "Psicotécnica y Casos": [
         "https://drive.google.com/file/d/1o1iyEAq9MgkvsiyqpkaWSpnd5Xx731-d/view?usp=sharing",
         "https://drive.google.com/file/d/13jBZlJFzm4Zr54tXaZwJMNalyJt0fQMT/view?usp=sharing",
         "https://drive.google.com/file/d/1q9N39H0hPiGrHVsi6U2jU7kyE6mSIMSE/view?usp=sharing"
@@ -69,13 +69,13 @@ def obtener_enlaces_por_area(area):
     elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "pedagogica", "funciones", "inclusion"]):
         return BIBLIOTECA_ESPECIFICA["Legislación y Pedagogía"], "Legislación y Pedagogía"
     else:
-        return BIBLIOTECA_ESPECIFICA["Psicotécnica"], "Psicotécnica / Casos"
+        return BIBLIOTECA_ESPECIFICA["Psicotécnica y Casos"], "Psicotécnica y Casos"
 
 def renderizar_caja_documentos(enlaces, nombre_cat):
-    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento de Estudio {i+1}</a></li>" for i, link in enumerate(enlaces[:5])])
+    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento Original de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces[:5])])
     return f"""
     <div class="norma-box">
-        <b>🔍 Respaldo Oficial ({nombre_cat}):</b> Material de consulta directa para este tema:
+        <b>🔍 Respaldo Oficial ({nombre_cat}):</b> Estudia este tema directamente desde tus archivos exactos de Drive:
         <ul class="link-list">
             {html_links}
         </ul>
@@ -136,27 +136,21 @@ with st.sidebar:
         "📅 Historial y Progreso"
     ])
 
-# --- PROMPTS MAESTROS ULTRA-ESPECÍFICOS ---
+# --- PROMPTS MAESTROS ---
 PROMPT_TEORIA_ESPECIFICA = """
 Actúa como un preparador experto de alto nivel para el Concurso Docente de Colombia.
 Desarrolla una clase magistral EXCLUSIVAMENTE sobre este tema específico: '{tema}'.
 
 REGLAS ESTRICTAS:
-1. NO hables de otros temas. Concéntrate 100% en '{tema}'.
-2. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto sin rodeos.
-3. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva (básico, intermedio, avanzado tipo prueba).
-4. PASO A PASO DETALLADO: Para cada ejemplo, muestra el procedimiento matemático línea por línea (suma, resta, multiplicación, división). No te saltes pasos. Si es un tema legal, cita el artículo y explica su aplicación práctica en el colegio.
-"""
-
-PROMPT_MAS_EJEMPLOS = """
-Genera 3 NUEVOS problemas o casos aplicados sobre el tema '{tema}' para el Concurso Docente.
-Estos ejemplos deben ser diferentes a los anteriores, un poco más complejos, y deben mostrar obligatoriamente la solución desglosada paso a paso (matemática o argumentativa).
+1. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto sin rodeos.
+2. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva (básico, intermedio, avanzado tipo prueba).
+3. PASO A PASO DETALLADO: Para cada ejemplo, muestra el procedimiento matemático línea por línea (suma, resta, multiplicación, división). No te saltes pasos. Si es un tema legal, cita el artículo y explica su aplicación práctica.
 """
 
 INSTRUCCION_MINI_JSON = """
 Eres un evaluador de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema}.
-Devuelve ÚNICAMENTE un arreglo JSON.
-Las justificaciones DEBEN ser detalladas, con una explicación lógica y matemática paso a paso (si aplica) o basada en la normatividad educativa.
+Devuelve ÚNICAMENTE un arreglo JSON válido.
+Las justificaciones DEBEN ser detalladas, con una explicación lógica y matemática paso a paso.
 Formato:
 [
   {
@@ -172,34 +166,19 @@ Formato:
 """
 
 # --- FUNCIONES NÚCLEO ---
-def generar_leccion_especifica(tema_exacto):
-    """Genera la teoría profunda y el test para un subtema específico"""
+def generar_teoria_y_ejemplos(tema_exacto):
+    """Genera SOLO la teoría y los ejemplos, reseteando el simulacro"""
+    st.session_state.preguntas_mini = None
     st.session_state.resultado_mini = None
     st.session_state.respuestas_mini = {}
     st.session_state.ejemplos_extra = None
     
-    with st.spinner(f"1/2: Redactando clase y ejemplos paso a paso exclusivamente de {tema_exacto}..."):
+    with st.spinner(f"Redactando clase y ejemplos paso a paso exclusivamente de {tema_exacto}..."):
         resp_texto = client.models.generate_content(
             model="gemini-3-flash-preview", 
             contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
         )
     
-    with st.spinner("2/2: Diseñando minisimulacro de 10 preguntas del tema..."):
-        try:
-            resp_json = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=f"Genera 10 preguntas interactivas sobre: {tema_exacto}",
-                config=types.GenerateContentConfig(
-                    system_instruction=INSTRUCCION_MINI_JSON.format(tema=tema_exacto),
-                    response_mime_type="application/json",
-                    temperature=0.7
-                )
-            )
-            st.session_state.preguntas_mini = json.loads(resp_json.text)
-        except Exception:
-            st.error("Error al generar las 10 preguntas. Se mostrará la teoría.")
-            st.session_state.preguntas_mini = None
-
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
     st.session_state.tema_activo = tema_exacto
     st.session_state.contenido_tema = resp_texto.text
@@ -209,20 +188,27 @@ def generar_leccion_especifica(tema_exacto):
     datos_globales[usuario]["diario_estudio"][f"{fecha_hoy} - {tema_exacto}"] = resp_texto.text
     guardar_datos(datos_globales)
 
-def generar_mas_ejemplos():
-    with st.spinner("Generando nuevos ejemplos avanzados paso a paso..."):
-        resp = client.models.generate_content(
-            model="gemini-3-flash-preview", 
-            contents=PROMPT_MAS_EJEMPLOS.format(tema=st.session_state.tema_activo)
-        )
-        st.session_state.ejemplos_extra = resp.text
+def generar_mini_simulacro_json(tema_exacto):
+    """Genera las 10 preguntas JSON al presionar el botón explícito"""
+    with st.spinner(f"Construyendo 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
+        try:
+            resp_json = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=f"Genera 10 preguntas JSON sobre: {tema_exacto}",
+                config=types.GenerateContentConfig(
+                    system_instruction=INSTRUCCION_MINI_JSON.format(tema=tema_exacto),
+                    response_mime_type="application/json",
+                    temperature=0.7
+                )
+            )
+            st.session_state.preguntas_mini = json.loads(resp_json.text)
+        except Exception:
+            st.error("Ocurrió un error al generar las preguntas. Por favor, intenta presionar el botón de nuevo.")
 
 # --- MÓDULO 1: TEMARIO DETALLADO (TEMA A TEMA) ---
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
     st.markdown('<div class="header-title">🗺️ Temario Específico Desglosado</div>', unsafe_allow_html=True)
-    st.write("Selecciona el tema exacto que deseas estudiar. La plataforma se concentrará **únicamente** en ese concepto.")
     
-    # Estructura hiper-específica basada en tu documento de Word
     TEMARIO_DESGLOSADO = {
         "📐 1. Aptitud Numérica": [
             "Porcentajes", "Regla de 3 Simple (Directa e Inversa)", "Regla de 3 Compuesta", 
@@ -239,11 +225,10 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         ],
         "🧠 4. Casos Aplicados y Documentos Adicionales": [
             "Casos aplicados de Convivencia Escolar (Ley 1620)", "Manual de funciones docente", 
-            "Preguntas tipo ICFES (Análisis y aplicación del conocimiento)"
+            "Preguntas tipo ICFES (Análisis y aplicación)"
         ]
     }
     
-    # Menú de selección visual en columnas
     col_menu, col_contenido = st.columns([1, 2.5])
     
     with col_menu:
@@ -251,7 +236,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             with st.expander(categoria, expanded=False):
                 for subtema in subtemas:
                     if st.button(f"📘 {subtema}", key=f"btn_{subtema}"):
-                        generar_leccion_especifica(subtema)
+                        generar_teoria_y_ejemplos(subtema)
                         st.rerun()
 
     with col_contenido:
@@ -260,20 +245,34 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             st.markdown(st.session_state.links_activos, unsafe_allow_html=True)
             st.markdown(st.session_state.contenido_tema)
             
-            # Botón para pedir más ejemplos
+            # Botón para más ejemplos
             st.divider()
             if not st.session_state.ejemplos_extra:
-                if st.button("➕ Necesito más ejemplos resueltos de este tema", type="secondary"):
-                    generar_mas_ejemplos()
+                if st.button("➕ Necesito más ejemplos resueltos", type="secondary"):
+                    with st.spinner("Generando nuevos ejemplos avanzados..."):
+                        resp = client.models.generate_content(
+                            model="gemini-3-flash-preview", 
+                            contents=f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Deben mostrar la solución matemática o argumentativa paso a paso."
+                        )
+                        st.session_state.ejemplos_extra = resp.text
                     st.rerun()
             else:
                 st.markdown("### ➕ Ejemplos Adicionales")
                 st.markdown(st.session_state.ejemplos_extra)
             
-            # Sección del Minisimulacro
+            # --- SECCIÓN DEL MINISIMULACRO POR BOTÓN ---
             st.divider()
             st.markdown(f"### 📝 MINISIMULACRO: {st.session_state.tema_activo}")
-            if st.session_state.preguntas_mini and not st.session_state.resultado_mini:
+            
+            # Si aún no se han generado las preguntas, muestra el botón
+            if not st.session_state.preguntas_mini:
+                st.info("¿Listo para poner a prueba lo aprendido? Inicia el cuestionario de 10 preguntas sobre este tema específico.")
+                if st.button(f"🎯 Iniciar Minisimulacro de {st.session_state.tema_activo}", type="primary"):
+                    generar_mini_simulacro_json(st.session_state.tema_activo)
+                    st.rerun()
+            
+            # Si las preguntas ya existen y no se ha calificado, muestra el formulario
+            elif st.session_state.preguntas_mini and not st.session_state.resultado_mini:
                 with st.form("mini_form"):
                     for p in st.session_state.preguntas_mini:
                         st.markdown(f"**{p['id']}. {p['enunciado']}**")
@@ -284,6 +283,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                             format_func=lambda x: f"{x}) {p['opciones'][x]}", key=f"mq_{p['id']}", index=None
                         )
                         st.write("---")
+                    
                     if st.form_submit_button("📥 Calificar Mis 10 Respuestas", type="primary"):
                         puntaje = 0
                         revision = []
@@ -297,6 +297,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                         st.session_state.resultado_mini = {"puntaje": puntaje, "total": 10, "revision": revision}
                         st.rerun()
 
+            # Si ya se calificó, muestra los resultados
             elif st.session_state.resultado_mini:
                 res = st.session_state.resultado_mini
                 st.markdown(f"<div class='resultado-box'><h2>📊 Puntaje Obtenido: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
@@ -358,7 +359,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
 # --- MÓDULO 4: HISTORIAL ---
 elif modo == "📅 Historial y Progreso":
     st.markdown('<div class="header-title">📅 Historial Diario y Estadísticas</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📈 Gráficas de Simulacros", "📚 Diario de Estudio (Contenido Exacto)"])
+    tab1, tab2 = st.tabs(["📈 Gráficas de Simulacros", "📚 Diario de Estudio"])
     
     with tab1:
         examenes = datos_globales[usuario].get("historial_examenes", [])
