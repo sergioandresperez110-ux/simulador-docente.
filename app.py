@@ -21,42 +21,50 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES Y MAPA EXACTO DE DOCUMENTOS ---
+# --- 2. CREDENCIALES Y MAPA EXACTO DE DOCUMENTOS (Basado en tu DOCX) ---
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v7.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v8.json"
 
+# Enlaces extraídos fielmente de "links de los documentos.docx"
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
-        "https://drive.google.com/file/d/1Egd7aH0tH4zZEPYxRn5mx3ybbbMIP5c5/view?usp=sharing",
-        "https://drive.google.com/file/d/1qZY6h0TJtwsgd5OLFqYYvT-bX2nE9bsg/view?usp=sharing",
-        "https://drive.google.com/file/d/1BpDRyk-YMYGlUYCLcACZ4XqEoCwmYpHj/view?usp=sharing",
-        "https://drive.google.com/file/d/1C-G_-ZCUXYco1-UXaPkHBMUku5fogHND/view?usp=sharing",
-        "https://drive.google.com/file/d/1zE8UhhVrRgJaxBYrdufKRRjoNcX62GKY/view?usp=sharing",
-        "https://drive.google.com/file/d/1YTsI18oi-A1KKgkG20kl5ndVbhy98P24/view?usp=sharing",
-        "https://drive.google.com/file/d/1cagSZH7Iuh_uX1jO0cVW7U9CAj2j_DTV/view?usp=sharing"
+        "[https://drive.google.com/file/d/1Egd7aH0tH4zZEPYxRn5mx3ybbbMIP5c5/view?usp=sharing](https://drive.google.com/file/d/1Egd7aH0tH4zZEPYxRn5mx3ybbbMIP5c5/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1qZY6h0TJtwsgd5OLFqYYvT-bX2nE9bsg/view?usp=sharing](https://drive.google.com/file/d/1qZY6h0TJtwsgd5OLFqYYvT-bX2nE9bsg/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1BpDRyk-YMYGlUYCLcACZ4XqEoCwmYpHj/view?usp=sharing](https://drive.google.com/file/d/1BpDRyk-YMYGlUYCLcACZ4XqEoCwmYpHj/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1C-G_-ZCUXYco1-UXaPkHBMUku5fogHND/view?usp=sharing](https://drive.google.com/file/d/1C-G_-ZCUXYco1-UXaPkHBMUku5fogHND/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1zE8UhhVrRgJaxBYrdufKRRjoNcX62GKY/view?usp=sharing](https://drive.google.com/file/d/1zE8UhhVrRgJaxBYrdufKRRjoNcX62GKY/view?usp=sharing)"
     ],
     "Aptitud Verbal": [
-        "https://drive.google.com/file/d/1TKm0OLhdmzGf49jCXc6cAjhIv5WLDd51/view?usp=sharing",
-        "https://drive.google.com/file/d/12wof-_M6lZjFA5zhRLLKFDR7sYc-N5eG/view?usp=sharing",
-        "https://drive.google.com/file/d/11zvg5XF_acqN_QughE5q0dKVBxjfffOO/view?usp=sharing",
-        "https://drive.google.com/file/d/1v0thrQ1E591S4WN8R6tNn1-gHty5m_YD/view?usp=sharing",
-        "https://drive.google.com/file/d/1He89LzxdKeAIYTOL-gz1GN6aOq06It6g/view?usp=sharing",
-        "https://drive.google.com/file/d/1-ezo6Nc-OQk6xtyAviPtCCm1IWN5cmhP/view?usp=sharing",
-        "https://drive.google.com/file/d/1XQYSFjhqvNjOCWIyF2vlkmCXoe0l35q0/view?usp=sharing"
+        "[https://drive.google.com/file/d/1TKm0OLhdmzGf49jCXc6cAjhIv5WLDd51/view?usp=sharing](https://drive.google.com/file/d/1TKm0OLhdmzGf49jCXc6cAjhIv5WLDd51/view?usp=sharing)",
+        "[https://drive.google.com/file/d/12wof-_M6lZjFA5zhRLLKFDR7sYc-N5eG/view?usp=sharing](https://drive.google.com/file/d/12wof-_M6lZjFA5zhRLLKFDR7sYc-N5eG/view?usp=sharing)",
+        "[https://drive.google.com/file/d/11zvg5XF_acqN_QughE5q0dKVBxjfffOO/view?usp=sharing](https://drive.google.com/file/d/11zvg5XF_acqN_QughE5q0dKVBxjfffOO/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1v0thrQ1E591S4WN8R6tNn1-gHty5m_YD/view?usp=sharing](https://drive.google.com/file/d/1v0thrQ1E591S4WN8R6tNn1-gHty5m_YD/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1He89LzxdKeAIYTOL-gz1GN6aOq06It6g/view?usp=sharing](https://drive.google.com/file/d/1He89LzxdKeAIYTOL-gz1GN6aOq06It6g/view?usp=sharing)"
     ],
-    "Legislación y Pedagogía": [
-        "https://drive.google.com/file/d/1XiFzhOT2PqgTJkQFpDw7xxORGImxx9eZ/view?usp=sharing",
-        "https://drive.google.com/file/d/1t7EdXUBpoDhSuxbKli0JHBX0aq6tqrbq/view?usp=sharing",
-        "https://drive.google.com/file/d/1JKBVhWP1MxNleGBs_wrnkhk2phUDe_UF/view?usp=sharing",
-        "https://drive.google.com/file/d/1zxGPqEZzxHihSJe2uPNwRAlEGPHkfiPj/view?usp=sharing",
-        "https://drive.google.com/file/d/1VfX_aBH-8aA_tvB9TbZEP66wVcd7fAW4/view?usp=sharing"
+    "Legislación Educativa": [
+        "[https://drive.google.com/file/d/1XiFzhOT2PqgTJkQFpDw7xxORGImxx9eZ/view?usp=sharing](https://drive.google.com/file/d/1XiFzhOT2PqgTJkQFpDw7xxORGImxx9eZ/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1t7EdXUBpoDhSuxbKli0JHBX0aq6tqrbq/view?usp=sharing](https://drive.google.com/file/d/1t7EdXUBpoDhSuxbKli0JHBX0aq6tqrbq/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1JKBVhWP1MxNleGBs_wrnkhk2phUDe_UF/view?usp=sharing](https://drive.google.com/file/d/1JKBVhWP1MxNleGBs_wrnkhk2phUDe_UF/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1XxToRrFgBjfK5NODMGDsB5a84lDXsRpy/view?usp=sharing](https://drive.google.com/file/d/1XxToRrFgBjfK5NODMGDsB5a84lDXsRpy/view?usp=sharing)"
+    ],
+    "Pedagogía": [
+        "[https://drive.google.com/file/d/1zxGPqEZzxHihSJe2uPNwRAlEGPHkfiPj/view?usp=sharing](https://drive.google.com/file/d/1zxGPqEZzxHihSJe2uPNwRAlEGPHkfiPj/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1VfX_aBH-8aA_tvB9TbZEP66wVcd7fAW4/view?usp=sharing](https://drive.google.com/file/d/1VfX_aBH-8aA_tvB9TbZEP66wVcd7fAW4/view?usp=sharing)",
+        "[https://drive.google.com/file/d/14bU0pvjB0Q6mxE3N6WACXoNrW-Eq7GNu/view?usp=sharing](https://drive.google.com/file/d/14bU0pvjB0Q6mxE3N6WACXoNrW-Eq7GNu/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1cWhENR5TQVwrymzbNOggSzOzTrFirZRf/view?usp=sharing](https://drive.google.com/file/d/1cWhENR5TQVwrymzbNOggSzOzTrFirZRf/view?usp=sharing)"
     ],
     "Psicotécnica y Casos": [
-        "https://drive.google.com/file/d/1o1iyEAq9MgkvsiyqpkaWSpnd5Xx731-d/view?usp=sharing",
-        "https://drive.google.com/file/d/13jBZlJFzm4Zr54tXaZwJMNalyJt0fQMT/view?usp=sharing",
-        "https://drive.google.com/file/d/1q9N39H0hPiGrHVsi6U2jU7kyE6mSIMSE/view?usp=sharing"
+        "[https://drive.google.com/file/d/1o1iyEAq9MgkvsiyqpkaWSpnd5Xx731-d/view?usp=sharing](https://drive.google.com/file/d/1o1iyEAq9MgkvsiyqpkaWSpnd5Xx731-d/view?usp=sharing)",
+        "[https://drive.google.com/file/d/13jBZlJFzm4Zr54tXaZwJMNalyJt0fQMT/view?usp=sharing](https://drive.google.com/file/d/13jBZlJFzm4Zr54tXaZwJMNalyJt0fQMT/view?usp=sharing)",
+        "[https://drive.google.com/file/d/1q9N39H0hPiGrHVsi6U2jU7kyE6mSIMSE/view?usp=sharing](https://drive.google.com/file/d/1q9N39H0hPiGrHVsi6U2jU7kyE6mSIMSE/view?usp=sharing)",
+        "[https://drive.google.com/file/d/13C3BqLLw3ppoBVKJM5lDB-b54pfW8Zqz/view?usp=sharing](https://drive.google.com/file/d/13C3BqLLw3ppoBVKJM5lDB-b54pfW8Zqz/view?usp=sharing)"
+    ],
+    "Tecnología e Informática": [
+        "[https://docs.google.com/document/d/1KXsLDV_48tQnphfTedD2GesfhoztrDBW/edit?usp=sharing](https://docs.google.com/document/d/1KXsLDV_48tQnphfTedD2GesfhoztrDBW/edit?usp=sharing)",
+        "[https://docs.google.com/document/d/1l5gyiJJXAT0x2xwAgQox1gQo24fLXjEp/edit?usp=sharing](https://docs.google.com/document/d/1l5gyiJJXAT0x2xwAgQox1gQo24fLXjEp/edit?usp=sharing)",
+        "[https://drive.google.com/file/d/15MtwY1NPnKhbLo_7uY_uCE8R83HWiNJq/view?usp=sharing](https://drive.google.com/file/d/15MtwY1NPnKhbLo_7uY_uCE8R83HWiNJq/view?usp=sharing)"
     ]
 }
 
@@ -66,13 +74,17 @@ def obtener_enlaces_por_area(area):
         return BIBLIOTECA_ESPECIFICA["Aptitud Numérica"], "Aptitud Numérica"
     elif any(palabra in area_lower for palabra in ["sinonimo", "antonimo", "analogia", "lectora", "oraciones", "verbal"]):
         return BIBLIOTECA_ESPECIFICA["Aptitud Verbal"], "Aptitud Verbal"
-    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "pedagogica", "funciones", "inclusion"]):
-        return BIBLIOTECA_ESPECIFICA["Legislación y Pedagogía"], "Legislación y Pedagogía"
+    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "legislacion"]):
+        return BIBLIOTECA_ESPECIFICA["Legislación Educativa"], "Legislación Educativa"
+    elif any(palabra in area_lower for palabra in ["pedagogica", "funciones", "inclusion", "pedagogia"]):
+        return BIBLIOTECA_ESPECIFICA["Pedagogía"], "Pedagogía"
+    elif any(palabra in area_lower for palabra in ["tecnologia", "informatica"]):
+        return BIBLIOTECA_ESPECIFICA["Tecnología e Informática"], "Tecnología e Informática"
     else:
         return BIBLIOTECA_ESPECIFICA["Psicotécnica y Casos"], "Psicotécnica y Casos"
 
 def renderizar_caja_documentos(enlaces, nombre_cat):
-    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento Original de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces[:5])])
+    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
     return f"""
     <div class="norma-box">
         <b>🔍 Respaldo Oficial ({nombre_cat}):</b> Estudia este tema directamente desde tus archivos exactos de Drive:
@@ -141,16 +153,17 @@ PROMPT_TEORIA_ESPECIFICA = """
 Actúa como un preparador experto de alto nivel para el Concurso Docente de Colombia.
 Desarrolla una clase magistral EXCLUSIVAMENTE sobre este tema específico: '{tema}'.
 
-REGLAS ESTRICTAS:
-1. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto sin rodeos.
-2. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva (básico, intermedio, avanzado tipo prueba).
-3. PASO A PASO DETALLADO: Para cada ejemplo, muestra el procedimiento matemático línea por línea (suma, resta, multiplicación, división). No te saltes pasos. Si es un tema legal, cita el artículo y explica su aplicación práctica.
+REGLAS ESTRICTAS E INQUEBRANTABLES:
+1. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto.
+2. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva.
+3. PASO A PASO DETALLADO: Muestra el procedimiento matemático o legal línea por línea.
+4. FORMATO OBLIGATORIO: ESTÁ ESTRICTAMENTE PROHIBIDO usar código LaTeX (como $, \mathbf, \times, \frac, \div). Usa ÚNICAMENTE texto plano y espacios claros (ejemplo: 400 x 0.15 = 60) para evitar que las palabras se amontonen o se rompa la plataforma.
 """
 
 INSTRUCCION_MINI_JSON = """
 Eres un evaluador de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema}.
-Devuelve ÚNICAMENTE un arreglo JSON válido.
-Las justificaciones DEBEN ser detalladas, con una explicación lógica y matemática paso a paso.
+Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
+Las justificaciones DEBEN ser detalladas en texto plano (SIN LaTeX ni símbolos matemáticos complejos).
 Formato:
 [
   {
@@ -159,7 +172,7 @@ Formato:
     "enunciado": "Pregunta...",
     "opciones": {"A": "...", "B": "...", "C": "..."},
     "correcta": "A",
-    "justificacion": "Explicación lógica paso a paso...",
+    "justificacion": "Explicación lógica paso a paso usando texto simple...",
     "cita_legal": "Regla matemática o artículo legal"
   }
 ]
@@ -167,13 +180,12 @@ Formato:
 
 # --- FUNCIONES NÚCLEO ---
 def generar_teoria_y_ejemplos(tema_exacto):
-    """Genera SOLO la teoría y los ejemplos, reseteando el simulacro"""
     st.session_state.preguntas_mini = None
     st.session_state.resultado_mini = None
     st.session_state.respuestas_mini = {}
     st.session_state.ejemplos_extra = None
     
-    with st.spinner(f"Redactando clase y ejemplos paso a paso exclusivamente de {tema_exacto}..."):
+    with st.spinner(f"Redactando clase y ejemplos sin formato conflictivo exclusivamente de {tema_exacto}..."):
         resp_texto = client.models.generate_content(
             model="gemini-3-flash-preview", 
             contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
@@ -189,21 +201,22 @@ def generar_teoria_y_ejemplos(tema_exacto):
     guardar_datos(datos_globales)
 
 def generar_mini_simulacro_json(tema_exacto):
-    """Genera las 10 preguntas JSON al presionar el botón explícito"""
     with st.spinner(f"Construyendo 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
         try:
             resp_json = client.models.generate_content(
                 model="gemini-3-flash-preview",
-                contents=f"Genera 10 preguntas JSON sobre: {tema_exacto}",
+                contents=f"Genera 10 preguntas JSON sobre: {tema_exacto}. Solo entrega la lista de objetos JSON.",
                 config=types.GenerateContentConfig(
                     system_instruction=INSTRUCCION_MINI_JSON.format(tema=tema_exacto),
                     response_mime_type="application/json",
                     temperature=0.7
                 )
             )
-            st.session_state.preguntas_mini = json.loads(resp_json.text)
-        except Exception:
-            st.error("Ocurrió un error al generar las preguntas. Por favor, intenta presionar el botón de nuevo.")
+            # Limpiador técnico para arreglar el error del botón
+            texto_limpio = resp_json.text.replace("```json", "").replace("```", "").strip()
+            st.session_state.preguntas_mini = json.loads(texto_limpio)
+        except Exception as e:
+            st.error(f"Error técnico al formatear las preguntas de la IA. Por favor, presiona el botón nuevamente. Detalle: {str(e)}")
 
 # --- MÓDULO 1: TEMARIO DETALLADO (TEMA A TEMA) ---
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
@@ -220,11 +233,11 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         ],
         "⚖️ 3. Marco Legal y Competencias Básicas": [
             "Ley 115 (Ley General de Educación)", "Ley 1098 (Infancia y Adolescencia)", 
-            "Ley 1620 (Convivencia Escolar y RAI)", "Guía 31 (Evaluación de desempeño docente)", 
+            "Ley 1620 (Convivencia Escolar y RAI)", "Guía 31 (Evaluación de desempeño)", 
             "Guía 34 (Mejoramiento institucional)", "Decreto 1421 (Educación inclusiva)"
         ],
         "🧠 4. Casos Aplicados y Documentos Adicionales": [
-            "Casos aplicados de Convivencia Escolar (Ley 1620)", "Manual de funciones docente", 
+            "Casos aplicados de Convivencia Escolar", "Manual de funciones docente", 
             "Preguntas tipo ICFES (Análisis y aplicación)"
         ]
     }
@@ -245,15 +258,12 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             st.markdown(st.session_state.links_activos, unsafe_allow_html=True)
             st.markdown(st.session_state.contenido_tema)
             
-            # Botón para más ejemplos
             st.divider()
             if not st.session_state.ejemplos_extra:
                 if st.button("➕ Necesito más ejemplos resueltos", type="secondary"):
-                    with st.spinner("Generando nuevos ejemplos avanzados..."):
-                        resp = client.models.generate_content(
-                            model="gemini-3-flash-preview", 
-                            contents=f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Deben mostrar la solución matemática o argumentativa paso a paso."
-                        )
+                    with st.spinner("Generando nuevos ejemplos avanzados en texto plano..."):
+                        prompt_ejemplos = f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Muestra la solución paso a paso. PROHIBIDO usar código LaTeX o símbolos que rompan el texto."
+                        resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt_ejemplos)
                         st.session_state.ejemplos_extra = resp.text
                     st.rerun()
             else:
@@ -264,14 +274,12 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             st.divider()
             st.markdown(f"### 📝 MINISIMULACRO: {st.session_state.tema_activo}")
             
-            # Si aún no se han generado las preguntas, muestra el botón
             if not st.session_state.preguntas_mini:
                 st.info("¿Listo para poner a prueba lo aprendido? Inicia el cuestionario de 10 preguntas sobre este tema específico.")
                 if st.button(f"🎯 Iniciar Minisimulacro de {st.session_state.tema_activo}", type="primary"):
                     generar_mini_simulacro_json(st.session_state.tema_activo)
                     st.rerun()
             
-            # Si las preguntas ya existen y no se ha calificado, muestra el formulario
             elif st.session_state.preguntas_mini and not st.session_state.resultado_mini:
                 with st.form("mini_form"):
                     for p in st.session_state.preguntas_mini:
@@ -297,7 +305,6 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                         st.session_state.resultado_mini = {"puntaje": puntaje, "total": 10, "revision": revision}
                         st.rerun()
 
-            # Si ya se calificó, muestra los resultados
             elif st.session_state.resultado_mini:
                 res = st.session_state.resultado_mini
                 st.markdown(f"<div class='resultado-box'><h2>📊 Puntaje Obtenido: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
@@ -318,16 +325,17 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
         
         with st.spinner(f"Construyendo prueba tipo CNSC para: {area_sim}..."):
-            sys_inst = f"Eres evaluador de la CNSC. Genera 20 preguntas exclusivas de '{area_sim}'. Devuelve SOLO JSON: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
+            sys_inst = f"Eres evaluador de la CNSC. Genera 20 preguntas exclusivas de '{area_sim}'. Devuelve SOLO JSON sin formato extra Markdown: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
                 response = client.models.generate_content(
-                    model="gemini-3-flash-preview", contents="Genera 20 preguntas",
+                    model="gemini-3-flash-preview", contents="Genera 20 preguntas JSON puras",
                     config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
                 )
-                st.session_state.examen_activo = json.loads(response.text)
+                texto_limpio = response.text.replace("```json", "").replace("```", "").strip()
+                st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
             except Exception:
-                st.error("Error al compilar el examen. Intenta de nuevo.")
+                st.error("Error al procesar el examen. Intenta de nuevo.")
 
     if st.session_state.examen_activo:
         preguntas = st.session_state.examen_activo
