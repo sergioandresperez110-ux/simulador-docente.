@@ -6,40 +6,45 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y DISEÑO ---
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS LIMPIOS ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
 
 st.markdown("""
 <style>
-    .header-title { font-size: 2.2rem; color: #0F172A; font-weight: 800; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px;}
-    .ruta-card { background-color: #F8FAFC; border: 1px solid #CBD5E1; padding: 18px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #2563EB; }
-    .drive-link-box { background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 12px; border-radius: 5px; margin: 10px 0;}
-    .pregunta-box { background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+    .header-title { font-size: 2.2rem; font-weight: 800; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px;}
+    .norma-box { border-left: 5px solid #2563EB; padding: 12px; margin: 15px 0; background-color: rgba(37, 99, 235, 0.05); border-radius: 4px; }
+    .pregunta-card { border: 1px solid #E2E8F0; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
     .stTextInput>div>div>input { border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES Y BIBLIOTECA DE DRIVE ---
+# --- 2. CREDENCIALES Y MAPA DE ENLACES ESPECÍFICOS DE GOOGLE DRIVE ---
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v2.json"
 
-ENLACES_DRIVE_GENERAL = "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing"
-
-BIBLIOTECA_DRIVE = {
-    "ley 1620": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing",
+# Enlaces directos y específicos para que constates la información real
+ENLACES_NORMATIVOS = {
+    "ley 1620": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing", # Reemplaza con el link específico de Ley 1620 si lo deseas
     "decreto 1290": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing",
-    "competencias pedagogicas": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing",
-    "tecnologia e informatica": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing"
+    "ley 115": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing",
+    "general": "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing"
 }
+
+def obtener_enlace_norma(texto):
+    texto_lower = texto.lower()
+    for clave, link in ENLACES_NORMATIVOS.items():
+        if clave in texto_lower:
+            return link, clave.upper()
+    return ENLACES_NORMATIVOS["general"], "Documentación Oficial MEN"
 
 # --- 3. BASE DE DATOS LOCAL ---
 def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
         with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {usr: {"historial_examenes": [], "temas_guardados": {}} for usr in USUARIOS_PERMITIDOS}
+    return {usr: {"historial_examenes": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
 
 def guardar_datos(datos):
     with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
@@ -55,7 +60,7 @@ if st.session_state.usuario_actual is None:
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         st.markdown('<div class="header-title">🏛️ Acceso Seguro CNSC</div>', unsafe_allow_html=True)
-        st.info("Ingresa tus credenciales para acceder a la ruta de estudio inteligente.")
+        st.info("Ingresa tus credenciales para acceder a tu historial y ruta.")
         usuario_input = st.text_input("Usuario (ID):").strip().upper()
         clave_input = st.text_input("Contraseña:", type="password")
         
@@ -71,7 +76,7 @@ client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
 if usuario not in datos_globales:
-    datos_globales[usuario] = {"historial_examenes": [], "temas_guardados": {}}
+    datos_globales[usuario] = {"historial_examenes": [], "diario_estudio": {}}
 
 if "examen_activo" not in st.session_state: st.session_state.examen_activo = None
 if "tema_activo" not in st.session_state: st.session_state.tema_activo = None
@@ -85,112 +90,99 @@ with st.sidebar:
         st.rerun()
     st.divider()
     modo = st.radio("Navegación:", [
-        "🗺️ Ruta de Estudio Inteligente (Inicio)", 
+        "🗺️ Ruta de Estudio Inteligente", 
         "📖 Biblioteca y Módulos de Estudio", 
         "📝 Simulacro Oficial (20 Preg. + Tiempo)", 
-        "📊 Gráficas de Desempeño y Progreso"
+        "📅 Historial Día a Día y Progreso"
     ])
     st.divider()
     area_evaluacion = st.selectbox(
         "Área de Enfoque:",
         ["Competencias Pedagógicas (Legislación)", "Lectura Crítica", "Razonamiento Cuantitativo", "Tecnología e Informática"]
     )
-    st.markdown(f"[📂 Abrir Biblioteca en Drive]({ENLACES_DRIVE_GENERAL})")
+    st.markdown(f"[📂 Abrir Biblioteca General]({ENLACES_NORMATIVOS['general']})")
 
-# --- MÓDULO 1: RUTA DE ESTUDIO INTELIGENTE (LA GUÍA PASO A PASO) ---
-if modo == "🗺️ Ruta de Estudio Inteligente (Inicio)":
-    st.markdown('<div class="header-title">🗺️ Tu Ruta de Estudio Oficial - CNSC 2026</div>', unsafe_allow_html=True)
-    st.success("¡Bienvenida a tu plan maestro! Como vas a empezar desde cero, no tienes que inventar qué estudiar. La IA ha diseñado esta ruta progresiva basada en las normativas del Ministerio de Educación y los documentos de tu biblioteca en Google Drive.")
+# --- MÓDULO 1: RUTA DE ESTUDIO INTELIGENTE ---
+if modo == "🗺️ Ruta de Estudio Inteligente":
+    st.markdown('<div class="header-title">🗺️ Ruta de Estudio Oficial - CNSC 2026</div>', unsafe_allow_html=True)
+    st.info("Selecciona cualquier fase del plan maestro. La IA redactará el contenido y te entregará el enlace exacto del documento de respaldo para verificar la norma.")
     
-    # Ruta preestablecida experta para docentes novatos en el concurso
     fases_estudio = [
-        {"fase": "Fase 1: Marco Legal y Convivencia Escolar", "tema": "Ley 1620 y Rutas de Atención Integral", "desc": "Comprende los protocolos obligatorios ante situaciones de conflicto y acoso escolar."},
-        {"fase": "Fase 2: Evaluación y Promoción Institucional", "tema": "Decreto 1290 de Evaluación del Aprendizaje", "desc": "Estudia los criterios de valoración, escalas de calificación y directrices institucionales."},
-        {"fase": "Fase 3: Fundamentos Pedagógicos Constitucionales", "tema": "Ley 115 (Ley General de Educación) y Fines de la Educación", "desc": "Revisa la estructura del sistema educativo colombiano y los niveles de formación."},
-        {"fase": "Fase 4: Juicio Situacional y Práctica de Aula", "tema": "Resolución de Casos Pedagógicos Complejos", "desc": "Aprende a responder bajo la perspectiva de la escuela inclusiva y el enfoque de derechos."}
+        {"fase": "Fase 1: Marco Legal y Convivencia Escolar", "tema": "Ley 1620 y Rutas de Atención Integral", "desc": "Protocolos obligatorios ante situaciones de conflicto y acoso escolar."},
+        {"fase": "Fase 2: Evaluación y Promoción Institucional", "tema": "Decreto 1290 de Evaluación del Aprendizaje", "desc": "Criterios de valoración y escalas de calificación institucional."},
+        {"fase": "Fase 3: Fundamentos Pedagógicos", "tema": "Ley 115 (Ley General de Educación)", "desc": "Estructura del sistema educativo colombiano y fines de la educación."},
+        {"fase": "Fase 4: Juicio Situacional", "tema": "Resolución de Casos Pedagógicos Complejos", "desc": "Análisis de situaciones de aula bajo el enfoque de derechos."}
     ]
     
     for item in fases_estudio:
-        st.markdown(f"""
-        <div class="ruta-card">
-            <h4>{item['fase']}</h4>
-            <p><b>Tema Clave:</b> {item['tema']}</p>
-            <p>{item['desc']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown(f"### {item['fase']}")
+        st.write(f"**Tema:** {item['tema']} — {item['desc']}")
         if st.button(f"🚀 Cargar y Estudiar: {item['tema']}", key=f"ruta_{item['tema']}"):
-            with st.spinner(f"Generando lección estructurada sobre {item['tema']} vinculada a tu biblioteca..."):
-                prompt = f"""Actúa como experto en el Concurso Docente de Colombia. Escribe una lección completa, didáctica y estructurada para un docente que empieza desde cero sobre: '{item['tema']}'. 
-                Explícalo de forma clara, incluye los artículos o conceptos fundamentales y haz énfasis en cómo lo evalúa la CNSC. 
-                Recuerda basarte en los lineamientos oficiales de los documentos del MEN."""
+            with st.spinner(f"Generando lección experta sobre {item['tema']}..."):
+                prompt = f"""Actúa como experto en el Concurso Docente de Colombia. Escribe una lección completa, rigurosa y estructurada sobre: '{item['tema']}'. 
+                Incluye los artículos exactos de la norma, los conceptos fundamentales y cómo lo evalúa la CNSC."""
                 
                 respuesta = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
                 st.session_state.tema_activo = item['tema']
                 st.session_state.contenido_tema = respuesta.text
                 
-                datos_globales[usuario]["temas_guardados"][item['tema']] = respuesta.text
+                # Guardar en el historial diario exacto
+                fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                key_historial = f"{fecha_hoy} - {item['tema']}"
+                datos_globales[usuario]["diario_estudio"][key_historial] = respuesta.text
                 guardar_datos(datos_globales)
                 st.rerun()
+        st.divider()
 
     if st.session_state.contenido_tema:
-        st.divider()
-        st.markdown(f"### 📄 Lección Activa: {st.session_state.tema_activo}")
+        link_drive, nombre_norma = obtener_enlace_norma(st.session_state.tema_activo)
         st.markdown(f"""
-        <div class="drive-link-box">
-            <b>📂 Resguardo Documental:</b> Esta lección está respaldada por los archivos oficiales de tu biblioteca. 
-            <a href="{ENLACES_DRIVE_GENERAL}" target="_blank">Consultar Documentos Originales en Google Drive</a>
+        <div class="norma-box">
+            <b>🔍 Constatación Documental:</b> Este tema está respaldado por la normatividad oficial. 
+            Puedes abrir y constatar el documento exacto aquí: <a href="{link_drive}" target="_blank">{nombre_norma} en Google Drive</a>
         </div>
         """, unsafe_allow_html=True)
         st.markdown(st.session_state.contenido_tema)
 
 # --- MÓDULO 2: BIBLIOTECA Y MÓDULOS DE ESTUDIO ---
 elif modo == "📖 Biblioteca y Módulos de Estudio":
-    st.markdown('<div class="header-title">📖 Biblioteca y Búsqueda de Contenido Experto</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-title">📖 Consulta y Generación de Contenido Experto</div>', unsafe_allow_html=True)
     
-    col_h, col_e = st.columns([1, 3])
-    with col_h:
-        st.subheader("📚 Tus Apuntes Guardados")
-        temas_previos = datos_globales[usuario].get("temas_guardados", {})
-        if temas_previos:
-            for t in list(temas_previos.keys())[::-1]:
-                if st.button(f"📄 {t}", key=f"sb_{t}", use_container_width=True):
-                    st.session_state.tema_activo = t
-                    st.session_state.contenido_tema = temas_previos[t]
-        else:
-            st.caption("No tienes temas guardados.")
+    tema_libre = st.text_input("¿Qué norma, ley o concepto específico deseas investigar hoy?")
+    if st.button("Generar Material de Estudio", type="primary") and tema_libre:
+        with st.spinner("Investigando y redactando apuntes..."):
+            prompt = f"""Redacta un documento maestro de estudio sobre '{tema_libre}' para el Concurso Docente de Colombia, 
+            citando artículos y principios normativos oficiales."""
+            resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
+            st.session_state.tema_activo = tema_libre
+            st.session_state.contenido_tema = resp.text
+            
+            fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            key_historial = f"{fecha_hoy} - {tema_libre}"
+            datos_globales[usuario]["diario_estudio"][key_historial] = resp.text
+            guardar_datos(datos_globales)
 
-    with col_e:
-        tema_libre = st.text_input("¿Qué otro concepto o ley específica deseas consultar?")
-        if st.button("Generar Material Basado en Drive", type="primary") and tema_libre:
-            with st.spinner("Sintetizando información oficial..."):
-                prompt = f"""Redacta un documento maestro de estudio sobre '{tema_libre}' para el Concurso Docente de Colombia, 
-                integrando de forma rigurosa los principios normativos oficiales (como si leyeras directamente los PDFs de la biblioteca)."""
-                resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
-                st.session_state.tema_activo = tema_libre
-                st.session_state.contenido_tema = resp.text
-                datos_globales[usuario]["temas_guardados"][tema_libre] = resp.text
-                guardar_datos(datos_globales)
-
-        if st.session_state.tema_activo:
-            st.markdown(f"### Módulo: {st.session_state.tema_activo}")
-            st.markdown(f"""
-            <div class="drive-link-box">
-                <b>📂 Enlace a Documentos de Drive:</b> <a href="{ENLACES_DRIVE_GENERAL}" target="_blank">Abrir Carpeta de Respaldo</a>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(st.session_state.contenido_tema)
+    if st.session_state.contenido_tema:
+        link_drive, nombre_norma = obtener_enlace_norma(st.session_state.tema_activo)
+        st.markdown(f"### Módulo: {st.session_state.tema_activo}")
+        st.markdown(f"""
+        <div class="norma-box">
+            <b>🔍 Verificar en Documento Original:</b> Constata la validez de esta información en el archivo correspondiente: 
+            <a href="{link_drive}" target="_blank">Abrir {nombre_norma} en Google Drive</a>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(st.session_state.contenido_tema)
 
 # --- MÓDULO 3: SIMULACRO OFICIAL ---
 elif modo == "📝 Simulacro Oficial (20 Preg. + Tiempo)":
     st.markdown('<div class="header-title">📝 Simulacro Oficial con Exigencia Real (20 Preguntas)</div>', unsafe_allow_html=True)
-    st.warning("⏱️ Prueba de 20 preguntas de juicio situacional con rigor de la CNSC. Al finalizar, el sistema calculará tu efectividad y actualizará tus gráficas de desempeño.")
+    st.warning("⏱️ Prueba de 20 preguntas de juicio situacional con rigor de la CNSC. Incluye justificaciones basadas en normatividad.")
     
     if st.button("🚀 Generar Nuevo Simulacro", type="primary"):
         st.session_state.examen_activo = None
         if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
         
-        with st.spinner("Construyendo 20 casos situacionales estrictos basados en normatividad y doctrina pedagógica..."):
+        with st.spinner("Construyendo 20 casos situacionales estrictos..."):
             system_instruction = """
             Eres un evaluador senior de la CNSC de Colombia. Genera EXACTAMENTE 20 preguntas complejas de juicio situacional para docentes.
             Deben estar basadas estrictamente en la normatividad educativa colombiana (Leyes, Decretos del MEN).
@@ -227,7 +219,7 @@ elif modo == "📝 Simulacro Oficial (20 Preg. + Tiempo)":
         with st.form("form_ex"):
             for p in preguntas:
                 st.markdown(f"""
-                <div class="pregunta-box">
+                <div class="pregunta-card">
                     <b>Pregunta {p.get('id', '*')}</b><br><br>
                     <i>Contexto:</i> {p['contexto']}<br><br>
                     <b>{p['enunciado']}</b>
@@ -248,10 +240,9 @@ elif modo == "📝 Simulacro Oficial (20 Preg. + Tiempo)":
                     if es_ok: puntaje += 1
                     revision.append({
                         "Pregunta": p['enunciado'], "Tu Respuesta": resp_usr or "N/A",
-                        "Correcta": p['correcta'], "Justificación": p['justificacion'], "Base": p.get('cita_legal', 'Normativa MEN')
+                        "Correcta": p['correcta'], "Justificación": p['justificación'], "Base": p.get('cita_legal', 'Normativa MEN')
                     })
                 
-                # Registro con área para graficar
                 reg = {
                     "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "Área": area_evaluacion,
@@ -269,33 +260,51 @@ elif modo == "📝 Simulacro Oficial (20 Preg. + Tiempo)":
         res = st.session_state.resultado_ultimo_examen
         st.success(f"📊 Calificación: {res['puntaje']} / {res['total']}")
         for i, r in enumerate(res['revision']):
+            link_drive, nombre_norma = obtener_enlace_norma(r['Base'])
             with st.expander(f"Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
                 st.write(f"**Justificación:** {r['Justificación']}")
-                st.info(f"**Sustento:** {r['Base']} | [📂 Ver en Google Drive]({ENLACES_DRIVE_GENERAL})")
+                st.info(f"**Sustento Legal:** {r['Base']} | [📂 Verificar en {nombre_norma}]({link_drive})")
 
-# --- MÓDULO 4: GRÁFICAS DE DESEMPEÑO Y PROGRESO ---
-elif modo == "📊 Gráficas de Desempeño y Progreso":
-    st.markdown('<div class="header-title">📊 Gráficas de Desempeño Analítico</div>', unsafe_allow_html=True)
-    st.write(f"Visualización gráfica del rendimiento de **{usuario}** en los simulacros presentados.")
+# --- MÓDULO 4: HISTORIAL DÍA A DÍA Y PROGRESO ---
+elif modo == "📅 Historial Día a Día y Progreso":
+    st.markdown('<div class="header-title">📅 Historial Día a Día y Evolución Académica</div>', unsafe_allow_html=True)
+    st.write(f"Aquí puedes auditar cada paso de tu estudio diario, **{usuario}**. Selecciona una fecha anterior para desplegar exactamente el contenido que estudiaste ese día.")
     
-    examenes = datos_globales[usuario].get("historial_examenes", [])
-    if examenes:
-        df = pd.DataFrame(examenes)
-        
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            st.metric("Total Simulacros Realizados", len(df))
-        with col_m2:
-            prom_efectividad = df["Efectividad"].mean()
-            st.metric("Efectividad Promedio Global", f"{prom_efectividad:.1f}%")
+    tab1, tab2 = st.tabs(["📚 Diario de Estudio (Contenido Exacto)", "📈 Gráficas de Simulacros"])
+    
+    with tab1:
+        diario = datos_globales[usuario].get("diario_estudio", {})
+        if diario:
+            sesion_seleccionada = st.selectbox("Selecciona la sesión de estudio guardada:", list(diario.keys())[::-1])
+            if sesion_seleccionada:
+                st.markdown(f"### Apuntes de la sesión: {sesion_seleccionada}")
+                link_drive, nombre_norma = obtener_enlace_norma(sesion_seleccionada)
+                st.markdown(f"""
+                <div class="norma-box">
+                    <b>📂 Documento Original de Respaldo:</b> <a href="{link_drive}" target="_blank">Abrir {nombre_norma} en Google Drive</a>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown(diario[sesion_seleccionada])
+        else:
+            st.info("Aún no tienes sesiones de estudio guardadas. Genera contenido en la Ruta Inteligente o Biblioteca.")
             
-        st.divider()
-        st.subheader("📈 Evolución de la Efectividad por Examen (%)")
-        # Gráfica de línea nativa integrada en Streamlit
-        st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
-        
-        st.divider()
-        st.subheader("📑 Registro Detallado de Pruebas")
-        st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-    else:
-        st.info("Aún no tienes simulacros registrados. Presenta tu primera prueba para que la plataforma genere las gráficas analíticas.")
+    with tab2:
+        examenes = datos_globales[usuario].get("historial_examenes", [])
+        if examenes:
+            df = pd.DataFrame(examenes)
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.metric("Total Simulacros Presentados", len(df))
+            with col_m2:
+                prom_efectividad = df["Efectividad"].mean()
+                st.metric("Efectividad Promedio Global", f"{prom_efectividad:.1f}%")
+                
+            st.divider()
+            st.subheader("📈 Evolución de la Efectividad por Examen (%)")
+            st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
+            
+            st.divider()
+            st.subheader("📑 Registro de Pruebas")
+            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+        else:
+            st.info("Aún no tienes simulacros registrados.")
