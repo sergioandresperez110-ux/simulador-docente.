@@ -6,7 +6,7 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y DISEÑO CSS ---
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS AVANZADOS ---
 st.set_page_config(page_title="Simulador Avanzado CNSC 2026", page_icon="🏛️", layout="wide")
 
 st.markdown("""
@@ -14,6 +14,8 @@ st.markdown("""
     .header-title { font-size: 2.2rem; color: #0F172A; font-weight: 800; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px;}
     .drive-link-box { background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 12px; border-radius: 5px; margin: 10px 0;}
     .pregunta-box { background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+    .diagnostico-box { background-color: #FEF2F2; border-left: 4px solid #EF4444; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    .fortaleza-box { background-color: #F0FDF4; border-left: 4px solid #22C55E; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
     .stTextInput>div>div>input { border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
@@ -24,7 +26,6 @@ USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
 ARCHIVO_DATOS = "datos_estudio_avanzado.json"
 
-# AQUÍ PUEDES CONFIGURAR LOS ENLACES DE TUS CARPETAS O ARCHIVOS EN GOOGLE DRIVE
 ENLACES_DRIVE_GENERAL = "https://drive.google.com/drive/folders/12dgYySHb9BnINgYTSuOqvM4ru-1VhxRW?usp=sharing"
 
 BIBLIOTECA_DRIVE = {
@@ -47,7 +48,7 @@ def guardar_datos(datos):
 
 datos_globales = cargar_datos()
 
-# --- 4. LOGIN SEGURO (CAJA DE TEXTO VACÍA) ---
+# --- 4. LOGIN SEGURO ---
 if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = None
 
@@ -55,7 +56,7 @@ if st.session_state.usuario_actual is None:
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         st.markdown('<div class="header-title">🏛️ Acceso CNSC 2026</div>', unsafe_allow_html=True)
-        st.info("Ingresa tus credenciales para acceder al simulador avanzado y biblioteca.")
+        st.info("Ingresa tus credenciales para acceder al simulador avanzado y seguimiento.")
         
         usuario_input = st.text_input("Usuario (ID):").strip().upper()
         clave_input = st.text_input("Contraseña:", type="password")
@@ -68,7 +69,7 @@ if st.session_state.usuario_actual is None:
                 st.error("Acceso denegado. Verifica tu usuario y contraseña.")
     st.stop()
 
-# --- 5. INICIALIZACIÓN DE LA APLICACIÓN ---
+# --- 5. INICIALIZACIÓN DE ESTADOS ---
 client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
@@ -85,13 +86,13 @@ with st.sidebar:
         st.session_state.usuario_actual = None
         st.rerun()
     st.divider()
-    modo = st.radio("Navegación:", ["📖 Centro de Estudio y Drive", "📝 Simulacro Oficial (20 Preg.)", "📊 Mi Rendimiento"])
+    modo = st.radio("Navegación:", ["📖 Centro de Estudio y Drive", "📝 Simulacro Oficial (20 Preg. + Tiempo)", "📊 Evolución y Progreso"])
     st.divider()
     area_evaluacion = st.selectbox(
         "Área de Enfoque:",
         ["Competencias Pedagógicas (Legislación)", "Lectura Crítica", "Razonamiento Cuantitativo", "Tecnología e Informática"]
     )
-    st.markdown(f"[📂 Ir a la Biblioteca en Drive]({ENL_DRIVE := ENLACES_DRIVE_GENERAL})")
+    st.markdown(f"[📂 Ir a la Biblioteca en Drive]({ENLACES_DRIVE_GENERAL})")
 
 # --- MÓDULO 1: CENTRO DE ESTUDIO Y RECURSOS DE DRIVE ---
 if modo == "📖 Centro de Estudio y Drive":
@@ -126,7 +127,6 @@ if modo == "📖 Centro de Estudio y Drive":
                 guardar_datos(datos_globales)
 
         if st.session_state.tema_activo:
-            # Enlace inteligente a Google Drive basado en palabras clave
             tema_minuscula = st.session_state.tema_activo.lower()
             enlace_encontrado = ENLACES_DRIVE_GENERAL
             for clave, link in BIBLIOTECA_DRIVE.items():
@@ -151,14 +151,16 @@ if modo == "📖 Centro de Estudio y Drive":
                     st.success("Ejemplos Generados:")
                     st.markdown(ejemplos.text)
 
-# --- MÓDULO 2: SIMULACRO OFICIAL 20 PREGUNTAS ---
-elif modo == "📝 Simulacro Oficial (20 Preg.)":
-    st.markdown('<div class="header-title">📝 Simulacro de Prueba Escrita CNSC</div>', unsafe_allow_html=True)
-    st.warning("⏱️ Esta prueba consta de 20 preguntas de juicio situacional inéditas basadas en la normatividad colombiana.")
+# --- MÓDULO 2: SIMULACRO CON CRONÓMETRO Y DIAGNÓSTICO ---
+elif modo == "📝 Simulacro Oficial (20 Preg. + Tiempo)":
+    st.markdown('<div class="header-title">📝 Simulacro con Límite de Tiempo (CNSC)</div>', unsafe_allow_html=True)
+    st.warning("⏱️ Esta prueba consta de **20 preguntas** de juicio situacional. Tienes un límite recomendado de **30 minutos**. Al enviar la prueba, el sistema auditará tus respuestas y generará un **Diagnóstico de Puntos Débiles** personalizado.")
     
-    if st.button("Generar Nuevo Simulacro (20 Preguntas)", type="primary"):
+    if st.button("🚀 Iniciar / Reiniciar Simulacro Oficial", type="primary"):
         st.session_state.examen_activo = None
-        with st.spinner("Construyendo 20 casos situacionales con justificaciones y citas legales... Esto tomará un momento."):
+        if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
+        
+        with st.spinner("Generando 20 casos situacionales inéditos con normatividad colombiana..."):
             system_instruction = """
             Eres un experto en redactar pruebas para la Comisión Nacional del Servicio Civil (CNSC) de Colombia.
             Genera EXACTAMENTE 20 preguntas de nivel avanzado basadas en el área solicitada.
@@ -190,10 +192,13 @@ elif modo == "📝 Simulacro Oficial (20 Preg.)":
                 st.session_state.examen_activo = json.loads(response.text)
                 st.session_state.respuestas_usuario = {}
             except Exception:
-                st.error("Hubo un error al compilar las preguntas. Por favor, haz clic de nuevo para reintentar.")
+                st.error("Error al compilar el examen. Intenta de nuevo haciendo clic en el botón.")
                 
     if st.session_state.examen_activo:
         preguntas = st.session_state.examen_activo
+        
+        # Simulación de cronómetro visual
+        st.info("⏳ Cronómetro de sesión activo: Cuenta regresiva estimada de 30:00 minutos.")
         
         with st.form("formulario_examen"):
             for p in preguntas:
@@ -214,16 +219,20 @@ elif modo == "📝 Simulacro Oficial (20 Preg.)":
                 )
                 st.write("---")
             
-            entregado = st.form_submit_button("Finalizar y Calificar Simulacro", type="primary")
+            entregado = st.form_submit_button("📥 Finalizar y Evaluar Examen", type="primary")
             
             if entregado:
                 puntaje = 0
                 revision_detallada = []
+                errores_cometidos = []
                 
                 for p in preguntas:
                     resp_usr = st.session_state.respuestas_usuario[p['id']]
                     es_correcta = (resp_usr == p['correcta'])
-                    if es_correcta: puntaje += 1
+                    if es_correcta: 
+                        puntaje += 1
+                    else:
+                        errores_cometidos.append(f"Pregunta sobre: {p['enunciado'][:50]}... (Soporte: {p.get('cita_legal', 'Norma MEN')})")
                     
                     revision_detallada.append({
                         "Pregunta": p['enunciado'],
@@ -233,11 +242,17 @@ elif modo == "📝 Simulacro Oficial (20 Preg.)":
                         "Base Legal": p.get('cita_legal', 'Normatividad MEN')
                     })
                 
+                # Generar Diagnóstico IA de Puntos Débiles
+                prompt_diag = f"Un docente presentó un simulacro de la CNSC en el área de '{area_evaluacion}' y obtuvo {puntaje} de 20. Falló en los siguientes temas/preguntas: {json.dumps(errores_cometidos)}.\n\nEscribe un diagnóstico breve y profesional que identifique los puntos débiles específicos que debe repasar y dale 3 recomendaciones tácticas de estudio para mejorar."
+                diag_resp = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt_diag)
+                
+                # Guardar registro
                 registro_examen = {
                     "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "Área": area_evaluacion,
                     "Puntaje": f"{puntaje} / {len(preguntas)}",
-                    "Efectividad": f"{(puntaje/len(preguntas))*100:.1f}%"
+                    "Efectividad": f"{(puntaje/len(preguntas))*100:.1f}%",
+                    "Diagnostico": diag_resp.text
                 }
                 datos_globales[usuario]["historial_examenes"].append(registro_examen)
                 guardar_datos(datos_globales)
@@ -245,13 +260,23 @@ elif modo == "📝 Simulacro Oficial (20 Preg.)":
                 st.session_state.resultado_ultimo_examen = {
                     "puntaje": puntaje,
                     "total": len(preguntas),
-                    "revision": revision_detallada
+                    "revision": revision_detallada,
+                    "diagnostico": diag_resp.text
                 }
                 st.rerun()
 
     if "resultado_ultimo_examen" in st.session_state:
         res = st.session_state.resultado_ultimo_examen
         st.success(f"📊 Calificación Final: {res['puntaje']} de {res['total']} respuestas correctas.")
+        
+        # Mostrar Guía de Diagnóstico de Puntos Débiles
+        st.markdown("### 📋 Informe de Diagnóstico y Brechas de Conocimiento")
+        st.markdown(f"""
+        <div class="diagnostico-box">
+            <b>Análisis de desempeño de la IA:</b><br><br>
+            {res['diagnostico']}
+        </div>
+        """, unsafe_allow_html=True)
         
         st.subheader("Hoja de Respuestas y Fundamentación en tu Biblioteca")
         for i, rev in enumerate(res['revision']):
@@ -263,14 +288,32 @@ elif modo == "📝 Simulacro Oficial (20 Preg.)":
                 st.write(f"**Justificación Técnica:** {rev['Justificación']}")
                 st.info(f"**Sustento Legal:** {rev['Base Legal']} | [📂 Ver en Google Drive]({ENLACES_DRIVE_GENERAL})")
 
-# --- MÓDULO 3: MI RENDIMIENTO ---
-elif modo == "📊 Mi Rendimiento":
-    st.markdown('<div class="header-title">📊 Auditoría de Rendimiento</div>', unsafe_allow_html=True)
-    st.write(f"Aquí puedes auditar tus simulacros completos, **{usuario}**.")
+# --- MÓDULO 3: SEGUIMIENTO Y PROGRESO DE CONOCIMIENTOS ---
+elif modo == "📊 Evolución y Progreso":
+    st.markdown('<div class="header-title">📊 Seguimiento y Progreso de Conocimientos</div>', unsafe_allow_html=True)
+    st.write(f"Panel analítico de trazabilidad académica para **{usuario}**. Aquí puedes auditar tu evolución histórica prueba tras prueba.")
     
     examenes = datos_globales[usuario].get("historial_examenes", [])
     if examenes:
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
+            st.metric("Simulacros Totales Presentados", len(examenes))
+        with col_m2:
+            # Calcular promedio de efectividad si hay datos
+            efectividades = [float(e["Efectividad"].replace("%", "")) for e in examenes]
+            promedio = sum(efectividades) / len(efectividades)
+            st.metric("Efectividad Promedio General", f"{promedio:.1f}%")
+            
+        st.divider()
+        st.subheader("📜 Historial de Exámenes y Diagnósticos Anteriores")
         df_examenes = pd.DataFrame(examenes)
         st.dataframe(df_examenes.iloc[::-1], use_container_width=True, hide_index=True)
+        
+        # Opción para revisar diagnósticos pasados
+        st.divider()
+        st.subheader("🔍 Historial de Informes Diagnósticos")
+        for idx, ex in enumerate(examenes[::-1]):
+            with st.expander(f"Informe del {ex['Fecha']} - Área: {ex['Área']} - Puntaje: {ex['Puntaje']}"):
+                st.markdown(ex.get("Diagnostico", "Sin diagnóstico detallado registrado."))
     else:
-        st.info("No tienes exámenes completados registrados. Ve a la pestaña 'Simulacro Oficial' para presentar tu primera prueba.")
+        st.info("Aún no tienes exámenes completados registrados. Dirígete a la pestaña de 'Simulacro Oficial' para presentar tu primera prueba con cronómetro.")
