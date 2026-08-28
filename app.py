@@ -25,7 +25,7 @@ st.markdown("""
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v12.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v13.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -186,7 +186,7 @@ def generar_teoria_y_ejemplos(tema_exacto):
     
     with st.spinner(f"Redactando clase y ejemplos paso a paso exclusivamente de {tema_exacto}..."):
         resp_texto = client.models.generate_content(
-            model="gemini-2.5-flash", 
+            model="gemini-3.5-flash", 
             contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
         )
     
@@ -203,7 +203,7 @@ def generar_mini_simulacro_json(tema_exacto):
     with st.spinner(f"Construyendo 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
         try:
             resp_json = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.5-flash",
                 contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}",
                 config=types.GenerateContentConfig(
                     system_instruction=obtener_instruccion_json(tema_exacto),
@@ -270,7 +270,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 if st.button("➕ Necesito más ejemplos resueltos", type="secondary"):
                     with st.spinner("Generando nuevos ejemplos avanzados en texto plano..."):
                         prompt_ejemplos = f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Muestra la solución paso a paso en texto plano, SIN usar comandos matemáticos LaTeX."
-                        resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt_ejemplos)
+                        resp = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ejemplos)
                         st.session_state.ejemplos_extra = resp.text
                     st.rerun()
             else:
@@ -335,7 +335,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
             sys_inst = f"Eres evaluador de la CNSC. Genera 20 preguntas exclusivas de '{area_sim}'. Devuelve SOLO JSON sin formato extra Markdown: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash", contents="Genera 20 preguntas JSON puras",
+                    model="gemini-3.5-flash", contents="Genera 20 preguntas JSON puras",
                     config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
                 )
                 texto_bruto = response.text
