@@ -6,26 +6,67 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS ---
+# --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS AVANZADOS ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
 
 st.markdown("""
 <style>
-    .header-title { font-size: 2.2rem; font-weight: 800; border-bottom: 3px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px;}
-    .norma-box { border-left: 5px solid #2563EB; padding: 15px; margin: 15px 0; background-color: rgba(37, 99, 235, 0.08); border-radius: 4px; }
-    .pregunta-card { border: 1px solid #E2E8F0; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
-    .stTextInput>div>div>input { border-radius: 8px; }
-    .link-list { margin-top: 10px; padding-left: 20px; }
-    .resultado-box { background-color: #F0FDF4; border-left: 5px solid #22C55E; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .stButton>button { width: 100%; text-align: left; margin-bottom: 5px; }
+    .main { background-color: #F8FAFC; }
+    .header-title { 
+        font-size: 2.4rem; 
+        font-weight: 800; 
+        color: #1E3A8A; 
+        border-bottom: 4px solid #3B82F6; 
+        padding-bottom: 12px; 
+        margin-bottom: 25px;
+    }
+    .norma-box { 
+        border-left: 6px solid #2563EB; 
+        padding: 18px; 
+        margin: 20px 0; 
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); 
+        border-radius: 8px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .pregunta-card { 
+        border: 1px solid #E2E8F0; 
+        padding: 22px; 
+        border-radius: 10px; 
+        margin-bottom: 20px; 
+        background-color: #FFFFFF;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .resultado-box { 
+        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); 
+        border-left: 6px solid #22C55E; 
+        padding: 22px; 
+        border-radius: 10px; 
+        margin: 20px 0; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .stButton>button { 
+        width: 100%; 
+        border-radius: 8px; 
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        transform: translateY(-1px;);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    }
+    div.stExpander {
+        border-radius: 8px;
+        border: 1px solid #E2E8F0;
+        background-color: #FFFFFF;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES Y MAPA EXACTO DE DOCUMENTOS ---
+# --- 2. CREDENCIALES Y MAPA DE DOCUMENTOS ---
 API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
-USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026"]
+USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v13.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v14.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -82,13 +123,23 @@ def obtener_enlaces_por_area(area):
     else:
         return BIBLIOTECA_ESPECIFICA["Psicotécnica y Casos"], "Psicotécnica y Casos"
 
-def renderizar_caja_documentos(enlaces, nombre_cat):
-    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
+def renderizar_caja_documentos(enlaces, nombre_cat, tema):
+    html_links = "".join([f"<li><a href='{link}' target='_blank'>📄 Documento oficial de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
+    query_yt = tema.replace(" ", "+")
+    url_yt = f"https://www.youtube.com/results?search_query=concurso+docente+colombia+{query_yt}"
+    url_yt_general = f"https://www.youtube.com/results?search_query=preparacion+cnsc+{nombre_cat.lower()}"
+    
     return f"""
     <div class="norma-box">
         <b>🔍 Respaldo Oficial ({nombre_cat}):</b> Estudia este tema directamente desde tus archivos exactos de Drive:
         <ul class="link-list">
             {html_links}
+        </ul>
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #93C5FD;">
+        <b>📺 Videotutoriales y Clases de Apoyo en YouTube:</b>
+        <ul class="link-list">
+            <li><a href='{url_yt}' target='_blank'>▶️ Buscar videoclases explicativas sobre: <b>{tema}</b></a></li>
+            <li><a href='{url_yt_general}' target='_blank'>▶️ Ver lista de reproducción recomendada para <b>{nombre_cat}</b></a></li>
         </ul>
     </div>
     """
@@ -111,36 +162,41 @@ if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = None
 
 if st.session_state.usuario_actual is None:
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown('<div class="header-title">🏛️ Acceso Seguro CNSC 2026</div>', unsafe_allow_html=True)
-        usuario_input = st.text_input("Usuario (ID):").strip().upper()
-        clave_input = st.text_input("Contraseña:", type="password")
-        if st.button("Iniciar Sesión", type="primary", use_container_width=True):
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown('<div class="header-title" style="text-align: center;">🏛️ Plataforma CNSC 2026</div>', unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B;'>Sistema Experto de Preparación Docente con Inteligencia Artificial</p>", unsafe_allow_html=True)
+        
+        usuario_input = st.text_input("👤 Usuario (ID Autorizado):").strip().upper()
+        clave_input = st.text_input("🔑 Contraseña:", type="password")
+        
+        if st.button("🚀 Ingresar al Sistema", type="primary", use_container_width=True):
             if usuario_input in USUARIOS_PERMITIDOS and clave_input == CLAVE_SECRETA:
                 st.session_state.usuario_actual = usuario_input
                 st.rerun()
             else:
-                st.error("Credenciales incorrectas.")
+                st.error("⚠️ Usuario o contraseña incorrectos.")
     st.stop()
 
 client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
-for key in ["examen_activo", "tema_activo", "contenido_tema", "ejemplos_extra", "links_activos", "preguntas_mini", "resultado_mini"]:
+for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "preguntas_mini", "resultado_mini"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
+if "lista_ejemplos_extra" not in st.session_state: st.session_state.lista_ejemplos_extra = []
 if "respuestas_mini" not in st.session_state: st.session_state.respuestas_mini = {}
 
 # --- MENÚ LATERAL ---
 with st.sidebar:
-    st.markdown(f"### 👨‍🏫 Docente: {usuario}")
-    if st.button("🚪 Cerrar Sesión"):
+    st.markdown(f"### 👨‍🏫 Docente: **{usuario}**")
+    if st.button("🚪 Cerrar Sesión", type="secondary"):
         st.session_state.usuario_actual = None
         st.rerun()
     st.divider()
-    modo = st.radio("Navegación:", [
+    modo = st.radio("Navegación Principal:", [
         "🗺️ Temario Detallado (Tema a Tema)", 
         "📝 Simulacro Oficial (20 Preguntas)", 
         "📅 Historial y Progreso"
@@ -151,19 +207,18 @@ PROMPT_TEORIA_ESPECIFICA = """
 Actúa como un preparador experto de alto nivel para el Concurso Docente de Colombia.
 Desarrolla una clase magistral EXCLUSIVAMENTE sobre este tema específico: '{tema}'.
 
-REGLAS ESTRICTAS E INQUEBRANTABLES:
-1. TEORÍA CLARA Y DIRECTA: Explica la lógica detrás del concepto.
-2. VARIEDAD DE EJEMPLOS (MÍNIMO 3 DIFERENTES): Presenta al menos 3 problemas diferentes con niveles de dificultad progresiva.
-3. PASO A PASO DETALLADO: Muestra el procedimiento matemático o legal línea por línea.
-4. FORMATO OBLIGATORIO: ESTÁ ESTRICTAMENTE PROHIBIDO usar código LaTeX. Usa ÚNICAMENTE texto plano y espacios claros para evitar que las palabras se amontonen.
+REGLAS ESTRICTAS:
+1. TEORÍA CLARA Y DIRECTA: Explica la lógica detallada del concepto.
+2. VARIEDAD DE EJEMPLOS (MÍNIMO 3): Presenta al menos 3 problemas diferentes con dificultad progresiva.
+3. PASO A PASO DETALLADO: Muestra el procedimiento línea por línea.
+4. FORMATO: Texto plano impecable, sin usar código LaTeX que rompa la interfaz.
 """
 
 def obtener_instruccion_json(tema_exacto):
     return f"""
-    Eres un evaluador de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
+    Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
     Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
-    Las justificaciones DEBEN ser detalladas en texto plano (SIN LaTeX ni símbolos matemáticos).
-    Formato:
+    Formato estricto:
     [
       {{
         "id": 1,
@@ -171,20 +226,19 @@ def obtener_instruccion_json(tema_exacto):
         "enunciado": "Pregunta...",
         "opciones": {{"A": "...", "B": "...", "C": "..."}},
         "correcta": "A",
-        "justificacion": "Explicación lógica paso a paso usando texto simple...",
-        "cita_legal": "Regla matemática o artículo legal"
+        "justificacion": "Explicación lógica paso a paso...",
+        "cita_legal": "Regla matemática o marco legal"
       }}
     ]
     """
 
-# --- FUNCIONES NÚCLEO ---
 def generar_teoria_y_ejemplos(tema_exacto):
     st.session_state.preguntas_mini = None
     st.session_state.resultado_mini = None
     st.session_state.respuestas_mini = {}
-    st.session_state.ejemplos_extra = None
+    st.session_state.lista_ejemplos_extra = []
     
-    with st.spinner(f"Redactando clase y ejemplos paso a paso exclusivamente de {tema_exacto}..."):
+    with st.spinner(f"Redactando clase magistral y materiales para: {tema_exacto}..."):
         resp_texto = client.models.generate_content(
             model="gemini-3.5-flash", 
             contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
@@ -193,14 +247,14 @@ def generar_teoria_y_ejemplos(tema_exacto):
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
     st.session_state.tema_activo = tema_exacto
     st.session_state.contenido_tema = resp_texto.text
-    st.session_state.links_activos = renderizar_caja_documentos(enlaces, nom_cat)
+    st.session_state.links_activos = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
     
     fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     datos_globales[usuario]["diario_estudio"][f"{fecha_hoy} - {tema_exacto}"] = resp_texto.text
     guardar_datos(datos_globales)
 
 def generar_mini_simulacro_json(tema_exacto):
-    with st.spinner(f"Construyendo 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
+    with st.spinner(f"Construyendo banco de 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
         try:
             resp_json = client.models.generate_content(
                 model="gemini-3.5-flash",
@@ -222,12 +276,12 @@ def generar_mini_simulacro_json(tema_exacto):
             st.session_state.preguntas_mini = json.loads(texto_limpio)
             return True
         except Exception as e:
-            st.error(f"Error técnico de la IA al construir las preguntas. Por favor, presiona el botón nuevamente. Detalle: {str(e)}")
+            st.error(f"Error al procesar el minisimulacro. Intenta nuevamente.")
             return False
 
-# --- MÓDULO 1: TEMARIO DETALLADO (TEMA A TEMA) ---
+# --- MÓDULO 1: TEMARIO DETALLADO ---
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
-    st.markdown('<div class="header-title">🗺️ Temario Específico Desglosado</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-title">🗺️ Módulo de Estudio Detallado</div>', unsafe_allow_html=True)
     
     TEMARIO_DESGLOSADO = {
         "📐 1. Aptitud Numérica": [
@@ -249,9 +303,10 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         ]
     }
     
-    col_menu, col_contenido = st.columns([1, 2.5])
+    col_menu, col_contenido = st.columns([1, 2.8])
     
     with col_menu:
+        st.markdown("### 📚 Selecciona Tema")
         for categoria, subtemas in TEMARIO_DESGLOSADO.items():
             with st.expander(categoria, expanded=False):
                 for subtema in subtemas:
@@ -261,28 +316,34 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
 
     with col_contenido:
         if st.session_state.contenido_tema:
-            st.markdown(f"## Módulo Específico: {st.session_state.tema_activo}")
+            st.markdown(f"## Módulo Académico: {st.session_state.tema_activo}")
             st.markdown(st.session_state.links_activos, unsafe_allow_html=True)
             st.markdown(st.session_state.contenido_tema)
             
             st.divider()
-            if not st.session_state.ejemplos_extra:
-                if st.button("➕ Necesito más ejemplos resueltos", type="secondary"):
-                    with st.spinner("Generando nuevos ejemplos avanzados en texto plano..."):
-                        prompt_ejemplos = f"Genera 3 NUEVOS problemas sobre '{st.session_state.tema_activo}'. Muestra la solución paso a paso en texto plano, SIN usar comandos matemáticos LaTeX."
-                        resp = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ejemplos)
-                        st.session_state.ejemplos_extra = resp.text
-                    st.rerun()
-            else:
-                st.markdown("### ➕ Ejemplos Adicionales")
-                st.markdown(st.session_state.ejemplos_extra)
             
-            # --- SECCIÓN DEL MINISIMULACRO POR BOTÓN ---
+            # --- SECCIÓN DE EJEMPLOS ADICIONALES ILIMITADOS ---
+            st.markdown("### ➕ Banco de Ejemplos Adicionales")
+            if st.button("➕ Cargar más ejemplos de práctica", type="secondary"):
+                with st.spinner("Generando nuevos ejercicios resueltos..."):
+                    prompt_ej = f"Genera 3 NUEVOS problemas avanzados sobre '{st.session_state.tema_activo}' con su procedimiento paso a paso detallado."
+                    resp_ej = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ej)
+                    st.session_state.lista_ejemplos_extra.append(resp_ej.text)
+                st.rerun()
+            
+            # Mostrar todos los bloques de ejemplos solicitados acumulativamente
+            for idx, ej_bloque in enumerate(st.session_state.lista_ejemplos_extra):
+                with st.container():
+                    st.markdown(f"**Ejercicios Adicionales - Bloque {idx + 1}**")
+                    st.markdown(ej_bloque)
+                    st.write("---")
+            
+            # --- SECCIÓN DEL MINISIMULACRO ---
             st.divider()
-            st.markdown(f"### 📝 MINISIMULACRO: {st.session_state.tema_activo}")
+            st.markdown(f"### 📝 MINISIMULACRO INTERACTIVO: {st.session_state.tema_activo}")
             
             if not st.session_state.preguntas_mini:
-                st.info("¿Listo para poner a prueba lo aprendido? Inicia el cuestionario de 10 preguntas sobre este tema específico.")
+                st.info("¿Comprendiste la teoría? Pon a prueba tus conocimientos con este minisimulacro de 10 preguntas evaluativas.")
                 if st.button(f"🎯 Iniciar Minisimulacro de {st.session_state.tema_activo}", type="primary"):
                     if generar_mini_simulacro_json(st.session_state.tema_activo):
                         st.rerun()
@@ -290,49 +351,60 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             elif st.session_state.preguntas_mini and not st.session_state.resultado_mini:
                 with st.form("mini_form"):
                     for p in st.session_state.preguntas_mini:
-                        st.markdown(f"**{p['id']}. {p['enunciado']}**")
-                        if p['contexto'] and p['contexto'] != "...":
+                        st.markdown(f"**Pregunta {p['id']}. {p['enunciado']}**")
+                        if p.get('contexto') and p['contexto'] != "...":
                             st.caption(f"Contexto: {p['contexto']}")
                         st.session_state.respuestas_mini[p['id']] = st.radio(
-                            "Selecciona:", options=list(p["opciones"].keys()),
+                            "Selecciona una opción:", options=list(p["opciones"].keys()),
                             format_func=lambda x: f"{x}) {p['opciones'][x]}", key=f"mq_{p['id']}", index=None
                         )
                         st.write("---")
                     
-                    if st.form_submit_button("📥 Calificar Mis 10 Respuestas", type="primary"):
+                    if st.form_submit_button("📥 Calificar Mis Respuestas", type="primary"):
                         puntaje = 0
                         revision = []
                         for p in st.session_state.preguntas_mini:
-                            resp = st.session_state.respuestas_mini[p['id']]
-                            if resp == p['correcta']: puntaje += 1
+                            resp = st.session_state.respuestas_mini.get(p['id'])
+                            es_correcta = (resp == p['correcta'])
+                            if es_correcta: puntaje += 1
                             revision.append({
-                                "Pregunta": p['enunciado'], "Tu Respuesta": resp or "No respondida", 
-                                "Correcta": p['correcta'], "Justificación": p['justificacion'], "Base": p.get('cita_legal', 'N/A')
+                                "Pregunta": p['enunciado'], "Tu Respuesta": resp or "Sin responder", 
+                                "Correcta": p['correcta'], "Justificación": p['justificacion'], 
+                                "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
                             })
-                        st.session_state.resultado_mini = {"puntaje": puntaje, "total": 10, "revision": revision}
+                        st.session_state.resultado_mini = {"puntaje": puntaje, "total": len(st.session_state.preguntas_mini), "revision": revision}
                         st.rerun()
 
             elif st.session_state.resultado_mini:
                 res = st.session_state.resultado_mini
-                st.markdown(f"<div class='resultado-box'><h2>📊 Puntaje Obtenido: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='resultado-box'><h2>📊 Calificación del Minisimulacro: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
                 for i, r in enumerate(res['revision']):
-                    with st.expander(f"Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                    icono = "✅" if r['Acierto'] else "❌"
+                    color_txt = "green" if r['Acierto'] else "red"
+                    with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                        st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
                         st.write(f"**Justificación:** {r['Justificación']}")
                         st.info(f"**Fundamento:** {r['Base']}")
+                
+                if st.button("🔄 Repetir Minisimulacro"):
+                    st.session_state.preguntas_mini = None
+                    st.session_state.resultado_mini = None
+                    st.session_state.respuestas_mini = {}
+                    st.rerun()
         else:
-            st.info("👈 Selecciona un tema en el menú de la izquierda para comenzar a estudiar.")
+            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y videos de YouTube.")
 
 # --- MÓDULO 2: SIMULACRO OFICIAL ---
 elif modo == "📝 Simulacro Oficial (20 Preguntas)":
-    st.markdown('<div class="header-title">📝 Simulacro General del Concurso Docente</div>', unsafe_allow_html=True)
-    area_sim = st.selectbox("Selecciona el área para evaluar:", ["Aptitud Numérica", "Aptitud Verbal", "Competencias Pedagógicas y Legislación"])
+    st.markdown('<div class="header-title">📝 Simulacro Oficial Tipo Concurso Docente</div>', unsafe_allow_html=True)
+    area_sim = st.selectbox("Selecciona el área a evaluar:", ["Aptitud Numérica", "Aptitud Verbal", "Competencias Pedagógicas y Legislación"])
     
-    if st.button("🚀 Iniciar Prueba (20 Preguntas)", type="primary"):
+    if st.button("🚀 Generar Evaluación de 20 Preguntas", type="primary"):
         st.session_state.examen_activo = None
         if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
         
-        with st.spinner(f"Construyendo prueba tipo CNSC para: {area_sim}..."):
-            sys_inst = f"Eres evaluador de la CNSC. Genera 20 preguntas exclusivas de '{area_sim}'. Devuelve SOLO JSON sin formato extra Markdown: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
+        with st.spinner(f"Construyendo simulacro oficial de {area_sim}..."):
+            sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
                 response = client.models.generate_content(
                     model="gemini-3.5-flash", contents="Genera 20 preguntas JSON puras",
@@ -349,59 +421,71 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
             except Exception as e:
-                st.error(f"Error al procesar el examen. Intenta de nuevo. Detalle: {str(e)}")
+                st.error(f"Error al procesar el examen oficial. Intenta de nuevo.")
 
     if st.session_state.examen_activo:
         preguntas = st.session_state.examen_activo
         with st.form("form_ex"):
             for p in preguntas:
                 st.markdown(f"<div class='pregunta-card'><b>Pregunta {p.get('id', '*')}</b><br><br><i>{p['contexto']}</i><br><br><b>{p['enunciado']}</b></div>", unsafe_allow_html=True)
-                st.session_state.respuestas_usuario[p['id']] = st.radio("Selecciona:", options=list(p["opciones"].keys()), format_func=lambda x: f"{x}) {p['opciones'][x]}", key=f"q_{p['id']}", index=None)
+                st.session_state.respuestas_usuario[p['id']] = st.radio("Selecciona opción:", options=list(p["opciones"].keys()), format_func=lambda x: f"{x}) {p['opciones'][x]}", key=f"q_{p['id']}", index=None)
             
-            if st.form_submit_button("📥 Entregar Prueba", type="primary"):
+            if st.form_submit_button("📥 Enviar y Calificar Simulacro Oficial", type="primary"):
                 puntaje, revision = 0, []
                 for p in preguntas:
-                    resp = st.session_state.respuestas_usuario[p['id']]
-                    if resp == p['correcta']: puntaje += 1
-                    revision.append({"Pregunta": p['enunciado'], "Tu Respuesta": resp or "N/A", "Correcta": p['correcta'], "Justificación": p['justificacion'], "Base": p.get('cita_legal', 'N/A')})
+                    resp = st.session_state.respuestas_usuario.get(p['id'])
+                    es_correcta = (resp == p['correcta'])
+                    if es_correcta: puntaje += 1
+                    revision.append({
+                        "Pregunta": p['enunciado'], "Tu Respuesta": resp or "N/A", 
+                        "Correcta": p['correcta'], "Justificación": p['justificacion'], 
+                        "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
+                    })
                 
-                datos_globales[usuario]["historial_examenes"].append({"Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "Área": area_sim, "Puntaje": puntaje, "Total": 20, "Efectividad": round((puntaje/20)*100, 1)})
+                efectividad = round((puntaje/len(preguntas))*100, 1)
+                datos_globales[usuario]["historial_examenes"].append({
+                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), 
+                    "Área": area_sim, "Puntaje": puntaje, "Total": len(preguntas), "Efectividad": efectividad
+                })
                 guardar_datos(datos_globales)
-                st.session_state.resultado_ultimo_examen = {"puntaje": puntaje, "total": 20, "revision": revision}
+                st.session_state.resultado_ultimo_examen = {"puntaje": puntaje, "total": len(preguntas), "revision": revision}
                 st.rerun()
 
     if "resultado_ultimo_examen" in st.session_state:
         res = st.session_state.resultado_ultimo_examen
-        st.success(f"📊 Calificación: {res['puntaje']} / 20")
+        st.success(f"📊 Calificación Final: {res['puntaje']} / {res['total']} ({(res['puntaje']/res['total'])*100:.1f}%)")
         for i, r in enumerate(res['revision']):
-            with st.expander(f"Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+            icono = "✅" if r['Acierto'] else "❌"
+            color_txt = "green" if r['Acierto'] else "red"
+            with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
                 st.write(f"**Justificación:** {r['Justificación']}")
-                st.info(f"**Base/Norma:** {r['Base']}")
+                st.info(f"**Norma o Fundamento:** {r['Base']}")
 
 # --- MÓDULO 4: HISTORIAL ---
 elif modo == "📅 Historial y Progreso":
-    st.markdown('<div class="header-title">📅 Historial Diario y Estadísticas</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📈 Gráficas de Simulacros", "📚 Diario de Estudio"])
+    st.markdown('<div class="header-title">📅 Historial de Progreso y Diario de Estudio</div>', unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["📈 Rendimiento en Simulacros", "📚 Diario de Estudio Registrado"])
     
     with tab1:
         examenes = datos_globales[usuario].get("historial_examenes", [])
         if examenes:
             df = pd.DataFrame(examenes)
             col1, col2 = st.columns(2)
-            with col1: st.metric("Simulacros", len(df))
+            with col1: st.metric("Simulacros Presentados", len(df))
             with col2: st.metric("Efectividad Promedio", f"{df['Efectividad'].mean():.1f}%")
             st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
             st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
         else:
-            st.info("No hay simulacros completados.")
+            st.info("No registra simulacros oficiales completados todavía.")
             
     with tab2:
         diario = datos_globales[usuario].get("diario_estudio", {})
         if diario:
-            sesion = st.selectbox("Selecciona la fecha estudiada:", list(diario.keys())[::-1])
+            sesion = st.selectbox("Selecciona la sesión guardada:", list(diario.keys())[::-1])
             if sesion:
                 enlaces, nom_cat = obtener_enlaces_por_area(sesion)
-                st.markdown(renderizar_caja_documentos(enlaces, nom_cat), unsafe_allow_html=True)
+                st.markdown(renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1]), unsafe_allow_html=True)
                 st.markdown(diario[sesion])
         else:
-            st.info("No hay sesiones guardadas en el diario.")
+            st.info("No hay sesiones registradas en el diario de estudio.")
