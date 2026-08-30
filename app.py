@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from google import genai
 from google.genai import types
+from streamlit_gsheets import GSheetsConnection  # <-- LÍNEA AÑADIDA PARA DRIVE
 
 # --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS VISUALES ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
@@ -70,7 +71,6 @@ except Exception:
 
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v20.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -150,16 +150,59 @@ def renderizar_caja_documentos(enlaces, nombre_cat, tema):
     </div>
     """
 
-# --- 3. BASE DE DATOS LOCAL ---
+# --- 3. BASE DE DATOS LOCAL CONVERTIDA A DRIVE ---
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error(f"Error al inicializar conexión con Google Sheets: {e}")
+
 def cargar_datos():
-    if os.path.exists(ARCHIVO_DATOS):
-        with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
+    try:
+        df = conn.read(worksheet="Historial", ttl=0)
+        if df.empty:
+            return {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
+        
+        datos = {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
+        for _, row in df.iterrows():
+            usr = str(row["Usuario"]).strip().upper()
+            tipo = str(row["Tipo"]).strip()
+            try:
+                contenido = json.loads(str(row["Contenido"]))
+            except:
+                continue
+            
+            if usr not in datos:
+                datos[usr] = {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}}
+            
+            if tipo == "Examen":
+                datos[usr]["historial_examenes"].append(contenido)
+            elif tipo == "Minisimulacro":
+                datos[usr]["historial_minisimulacros"].append(contenido)
+            elif tipo == "Diario":
+                clave = str(row["Clave"])
+                datos[usr]["diario_estudio"][clave] = contenido
+        return datos
+    except Exception:
+        return {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
 
 def guardar_datos(datos):
-    with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
-        json.dump(datos, f, indent=4, ensure_ascii=False)
+    try:
+        filas = []
+        for usr, data in datos.items():
+            for ex in data.get("historial_examenes", []):
+                filas.append({"Usuario": usr, "Tipo": "Examen", "Clave": "", "Contenido": json.dumps(ex, ensure_ascii=False)})
+            for mini in data.get("historial_minisimulacros", []):
+                filas.append({"Usuario": usr, "Tipo": "Minisimulacro", "Clave": "", "Contenido": json.dumps(mini, ensure_ascii=False)})
+            for clave, cont in data.get("diario_estudio", {}).items():
+                filas.append({"Usuario": usr, "Tipo": "Diario", "Clave": clave, "Contenido": json.dumps(cont, ensure_ascii=False)})
+        
+        df_nuevo = pd.DataFrame(filas)
+        if df_nuevo.empty:
+            df_nuevo = pd.DataFrame(columns=["Usuario", "Tipo", "Clave", "Contenido"])
+            
+        conn.update(worksheet="Historial", data=df_nuevo)
+    except Exception as e:
+        st.error(f"Error al guardar en Google Drive: {e}")
 
 datos_globales = cargar_datos()
 
