@@ -3,7 +3,6 @@ import os
 import datetime
 import pandas as pd
 import streamlit as st
-import plotly.express as px
 from google import genai
 from google.genai import types
 
@@ -71,7 +70,7 @@ except Exception:
 
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v19.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v20.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -324,59 +323,29 @@ def generar_mini_simulacro_json(tema_exacto):
             st.error(f"Error al procesar el minisimulacro: {e}")
             return False
 
-def mostrar_grafico_radar_y_retroalimentacion(revision_preguntas):
-    """Genera un gráfico de radar hexagonal interactivo con Plotly y el desglose de fortalezas/debilidades"""
+def mostrar_diagnostico_y_retroalimentacion(revision_preguntas):
+    """Genera un reporte visual nativo con barras de progreso y desglose de fortalezas/debilidades"""
     correctas = [r for r in revision_preguntas if r['Acierto']]
     incorrectas = [r for r in revision_preguntas if not r['Acierto']]
     
     total = len(revision_preguntas)
     porcentaje = (len(correctas) / total) * 100 if total > 0 else 0
     
-    # Construcción de métricas simuladas para las 6 esquinas del hexágono de competencias
-    # Tomamos el puntaje general y lo variamos ligeramente para dar realismo a las dimensiones
-    base_val = porcentaje
-    categorias_hex = [
-        "Aptitud Numérica", 
-        "Aptitud Verbal", 
-        "Pedagogía", 
-        "Legislación y Debido Proceso", 
-        "Ofimática y Excel", 
-        "Psicotécnica y Casos"
-    ]
+    st.markdown("### 📊 Diagnóstico de Desempeño por Competencias")
     
-    # Generamos valores simulados coherentes con el puntaje obtenido
-    valores_hex = [
-        min(100, max(20, base_val + 5)),
-        min(100, max(20, base_val - 8)),
-        min(100, max(20, base_val + 10)),
-        min(100, max(20, base_val - 2)),
-        min(100, max(20, base_val + 2)),
-        min(100, max(20, base_val - 5))
-    ]
+    # Métricas principales nativas
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Puntaje Obtenido", f"{len(correctas)} / {total}")
+    col2.metric("Efectividad", f"{porcentaje:.1f}%")
+    col3.metric("Estado", "Aprobado 🟢" if porcentaje >= 70 else "A Reforzar 🔴")
     
-    df_radar = pd.DataFrame(dict(
-        R=valores_hex,
-        Theta=categorias_hex
-    ))
+    # Barra de progreso nativa como indicador visual limpio
+    st.progress(porcentaje / 100)
     
-    st.markdown("### 🕸️ Gráfico de Radar Hexagonal de Competencias")
-    fig = px.line_polar(df_radar, r='R', theta='Theta', line_close=True, range_r=[0, 100])
-    fig.update_traces(fill='toself', line_color='#38BDF8', marker=dict(size=8, color='#2563EB'))
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], color="#94A3B8"),
-            bgcolor="#1E293B"
-        ),
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#F8FAFC"),
-        margin=dict(t=30, b=30, l=40, r=40)
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Bloque de Diagnóstico Detallado abajo del gráfico
+    # Bloque de Diagnóstico Detallado
     feedback_html = f"""
     <div class='feedback-box'>
-        <h3>📊 Diagnóstico Integral de Desempeño ({porcentaje:.1f}% de Acierto)</h3>
+        <h3>💡 Análisis Inteligente de Resultados</h3>
     """
     
     if porcentaje >= 80:
@@ -526,8 +495,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 res = st.session_state.resultado_mini
                 st.markdown(f"<div class='resultado-box'><h2>📊 Calificación del Minisimulacro: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
                 
-                # Renderizar Gráfico de Radar Hexagonal y Feedback
-                mostrar_grafico_radar_y_retroalimentacion(res['revision'])
+                mostrar_diagnostico_y_retroalimentacion(res['revision'])
                 
                 st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
                 for i, r in enumerate(res['revision']):
@@ -607,7 +575,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         res = st.session_state.resultado_ultimo_examen
         st.success(f"📊 Calificación Final: {res['puntaje']} / {res['total']} ({(res['puntaje']/res['total'])*100:.1f}%)")
         
-        mostrar_grafico_radar_y_retroalimentacion(res['revision'])
+        mostrar_diagnostico_y_retroalimentacion(res['revision'])
         
         st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
         for i, r in enumerate(res['revision']):
@@ -685,7 +653,7 @@ elif modo == "🎯 Exámenes por Área Específica":
         res_esp = st.session_state.resultado_especifico
         st.success(f"📊 Calificación Examen Específico: {res_esp['puntaje']} / {res_esp['total']} ({(res_esp['puntaje']/res_esp['total'])*100:.1f}%)")
         
-        mostrar_grafico_radar_y_retroalimentacion(res_esp['revision'])
+        mostrar_diagnostico_y_retroalimentacion(res_esp['revision'])
         
         st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
         for i, r in enumerate(res_esp['revision']):
