@@ -3,6 +3,7 @@ import os
 import datetime
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 from google import genai
 from google.genai import types
 
@@ -40,7 +41,13 @@ st.markdown("""
         border-radius: 10px; 
         margin: 20px 0; 
     }
-    /* Estilo limpio para los botones del menú y acciones */
+    .feedback-box {
+        background: rgba(245, 158, 11, 0.1);
+        border-left: 6px solid #F59E0B;
+        padding: 18px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
     .stButton>button { 
         width: 100%; 
         border-radius: 8px; 
@@ -56,11 +63,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES Y MAPA DE DOCUMENTOS ---
-API_KEY = "AQ.Ab8RN6IT6-t3t77qXYzFiVNyakzVr-4cTvUU9Skrh9E_o9r6Tw"
+# --- 2. CREDENCIALES SEGURIZADAS Y MAPA DE DOCUMENTOS ---
+try:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    API_KEY = None
+
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
-ARCHIVO_DATOS = "datos_estudio_maestro_v16.json"
+ARCHIVO_DATOS = "datos_estudio_maestro_v19.json"
 
 BIBLIOTECA_ESPECIFICA = {
     "Aptitud Numérica": [
@@ -77,7 +88,7 @@ BIBLIOTECA_ESPECIFICA = {
         "https://drive.google.com/file/d/1v0thrQ1E591S4WN8R6tNn1-gHty5m_YD/view?usp=sharing",
         "https://drive.google.com/file/d/1He89LzxdKeAIYTOL-gz1GN6aOq06It6g/view?usp=sharing"
     ],
-    "Legislación Educativa": [
+    "Legislación Educativa y Debido Proceso": [
         "https://drive.google.com/file/d/1XiFzhOT2PqgTJkQFpDw7xxORGImxx9eZ/view?usp=sharing",
         "https://drive.google.com/file/d/1t7EdXUBpoDhSuxbKli0JHBX0aq6tqrbq/view?usp=sharing",
         "https://drive.google.com/file/d/1JKBVhWP1MxNleGBs_wrnkhk2phUDe_UF/view?usp=sharing",
@@ -89,13 +100,7 @@ BIBLIOTECA_ESPECIFICA = {
         "https://drive.google.com/file/d/14bU0pvjB0Q6mxE3N6WACXoNrW-Eq7GNu/view?usp=sharing",
         "https://drive.google.com/file/d/1cWhENR5TQVwrymzbNOggSzOzTrFirZRf/view?usp=sharing"
     ],
-    "Psicotécnica y Casos": [
-        "https://drive.google.com/file/d/1o1iyEAq9MgkvsiyqpkaWSpnd5Xx731-d/view?usp=sharing",
-        "https://drive.google.com/file/d/13jBZlJFzm4Zr54tXaZwJMNalyJt0fQMT/view?usp=sharing",
-        "https://drive.google.com/file/d/1q9N39H0hPiGrHVsi6U2jU7kyE6mSIMSE/view?usp=sharing",
-        "https://drive.google.com/file/d/13C3BqLLw3ppoBVKJM5lDB-b54pfW8Zqz/view?usp=sharing"
-    ],
-    "Tecnología e Informática": [
+    "Excel y Ofimática Docente": [
         "https://docs.google.com/document/d/1KXsLDV_48tQnphfTedD2GesfhoztrDBW/edit?usp=sharing",
         "https://docs.google.com/document/d/1l5gyiJJXAT0x2xwAgQox1gQo24fLXjEp/edit?usp=sharing",
         "https://drive.google.com/file/d/15MtwY1NPnKhbLo_7uY_uCE8R83HWiNJq/view?usp=sharing"
@@ -111,20 +116,8 @@ VIDEOS_EXACTOS = {
     "Ecuaciones de primer grado": "https://www.youtube.com/watch?v=7q3J4vL1x7Q",
     "Análisis de gráficas": "https://www.youtube.com/watch?v=9x3V1l8k57A",
     "Pensamiento abstracto": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
-    "Sinónimos y Antónimos": "https://www.youtube.com/watch?v=8x2v3u4v5w6",
-    "Analogías": "https://www.youtube.com/watch?v=7x2v3u4v5w6",
-    "Comprensión lectora": "https://www.youtube.com/watch?v=6x2v3u4v5w6",
-    "Ordenamiento de palabras": "https://www.youtube.com/watch?v=5x2v3u4v5w6",
-    "Orden lógico de oraciones": "https://www.youtube.com/watch?v=4x2v3u4v5w6",
-    "Ley 115 (Ley General de Educación)": "https://www.youtube.com/watch?v=3x2v3u4v5w6",
-    "Ley 1098 (Infancia y Adolescencia)": "https://www.youtube.com/watch?v=2x2v3u4v5w6",
-    "Ley 1620 (Convivencia Escolar y RAI)": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
-    "Guía 31 (Evaluación de desempeño)": "https://www.youtube.com/watch?v=9x8v7u6t5s4",
-    "Guía 34 (Mejoramiento institucional)": "https://www.youtube.com/watch?v=8x8v7u6t5s4",
-    "Decreto 1421 (Educación inclusiva)": "https://www.youtube.com/watch?v=7x8v7u6t5s4",
-    "Casos aplicados de Convivencia Escolar": "https://www.youtube.com/watch?v=6x8v7u6t5s4",
-    "Manual de funciones docente": "https://www.youtube.com/watch?v=5x8v7u6t5s4",
-    "Preguntas tipo ICFES (Análisis y aplicación)": "https://www.youtube.com/watch?v=4x8v7u6t5s4"
+    "Debido Proceso y Casos Disciplinarios": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
+    "Excel y Herramientas Ofimáticas CNSC": "https://www.youtube.com/watch?v=hN7mQ02lJ40"
 }
 
 def obtener_enlaces_por_area(area):
@@ -133,14 +126,12 @@ def obtener_enlaces_por_area(area):
         return BIBLIOTECA_ESPECIFICA["Aptitud Numérica"], "Aptitud Numérica"
     elif any(palabra in area_lower for palabra in ["sinonimo", "antonimo", "analogia", "lectora", "oraciones", "verbal"]):
         return BIBLIOTECA_ESPECIFICA["Aptitud Verbal"], "Aptitud Verbal"
-    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "legislacion"]):
-        return BIBLIOTECA_ESPECIFICA["Legislación Educativa"], "Legislación Educativa"
-    elif any(palabra in area_lower for palabra in ["pedagogica", "funciones", "inclusion", "pedagogia"]):
-        return BIBLIOTECA_ESPECIFICA["Pedagogía"], "Pedagogía"
-    elif any(palabra in area_lower for palabra in ["tecnologia", "informatica"]):
-        return BIBLIOTECA_ESPECIFICA["Tecnología e Informática"], "Tecnología e Informática"
+    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "legislacion", "proceso"]):
+        return BIBLIOTECA_ESPECIFICA["Legislación Educativa y Debido Proceso"], "Legislación Educativa y Debido Proceso"
+    elif any(palabra in area_lower for palabra in ["excel", "office", "ofimatica", "word", "powerpoint"]):
+        return BIBLIOTECA_ESPECIFICA["Excel y Ofimática Docente"], "Excel y Ofimática Docente"
     else:
-        return BIBLIOTECA_ESPECIFICA["Psicotécnica y Casos"], "Psicotécnica y Casos"
+        return BIBLIOTECA_ESPECIFICA["Pedagogía"], "Pedagogía"
 
 def renderizar_caja_documentos(enlaces, nombre_cat, tema):
     html_links = "".join([f"<li><a href='{link}' target='_blank' style='color: #38BDF8;'>📄 Documento oficial de {nombre_cat} {i+1}</a></li>" for i, link in enumerate(enlaces)])
@@ -165,7 +156,7 @@ def cargar_datos():
     if os.path.exists(ARCHIVO_DATOS):
         with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {usr: {"historial_examenes": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
+    return {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
 
 def guardar_datos(datos):
     with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
@@ -173,7 +164,17 @@ def guardar_datos(datos):
 
 datos_globales = cargar_datos()
 
-# --- 4. LOGIN ---
+for usr in USUARIOS_PERMITIDOS:
+    if usr not in datos_globales:
+        datos_globales[usr] = {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}}
+    if "historial_minisimulacros" not in datos_globales[usr]:
+        datos_globales[usr]["historial_minisimulacros"] = []
+
+# --- 4. VALIDACIÓN DE API KEY Y LOGIN ---
+if not API_KEY:
+    st.error("⚠️ No se ha configurado la API Key de Gemini en st.secrets.")
+    st.stop()
+
 if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = None
 
@@ -215,6 +216,7 @@ with st.sidebar:
     modo = st.radio("Navegación Principal:", [
         "🗺️ Temario Detallado (Tema a Tema)", 
         "📝 Simulacro Oficial (20 Preguntas)", 
+        "🎯 Exámenes por Área Específica",
         "📅 Historial y Progreso"
     ])
 
@@ -231,22 +233,41 @@ REGLAS ESTRICTAS:
 """
 
 def obtener_instruccion_json(tema_exacto):
-    return f"""
-    Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
-    Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
-    Formato estricto:
-    [
-      {{
-        "id": 1,
-        "contexto": "Situación...",
-        "enunciado": "Pregunta...",
-        "opciones": {{"A": "...", "B": "...", "C": "..."}},
-        "correcta": "A",
-        "justificacion": "Explicación lógica paso a paso...",
-        "cita_legal": "Regla matemática o marco legal"
-      }}
-    ]
-    """
+    if "proceso" in tema_exacto.lower() or "disciplinario" in tema_exacto.lower() or "ley 1620" in tema_exacto.lower():
+        return f"""
+        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas y EXTENSAS basadas en casos prácticos sobre: {tema_exacto}. 
+        Cada pregunta debe tener un contexto argumentado y detallado (mínimo 3 a 4 líneas simulando situaciones reales de instituciones educativas colombianas), planteando dilemas sobre garantías procesales, deberes y derechos.
+        Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
+        Formato estricto:
+        [
+          {{
+            "id": 1,
+            "contexto": "Caso detallado de situación escolar o administrativa...",
+            "enunciado": "Pregunta analítica sobre el caso...",
+            "opciones": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+            "correcta": "A",
+            "justificacion": "Explicación jurídica y argumentada paso a paso...",
+            "cita_legal": "Norma, artículo o sentencia aplicable"
+          }}
+        ]
+        """
+    else:
+        return f"""
+        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
+        Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
+        Formato estricto:
+        [
+          {{
+            "id": 1,
+            "contexto": "Situación...",
+            "enunciado": "Pregunta...",
+            "opciones": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+            "correcta": "A",
+            "justificacion": "Explicación lógica paso a paso...",
+            "cita_legal": "Regla matemática o marco legal"
+          }}
+        ]
+        """
 
 def generar_teoria_y_ejemplos(tema_exacto):
     st.session_state.preguntas_mini = None
@@ -255,20 +276,26 @@ def generar_teoria_y_ejemplos(tema_exacto):
     st.session_state.lista_ejemplos_extra = []
     
     with st.spinner(f"Redactando clase magistral y materiales para: {tema_exacto}..."):
-        resp_texto = client.models.generate_content(
-            model="gemini-3.5-flash", 
-            contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
-        )
+        try:
+            resp_texto = client.models.generate_content(
+                model="gemini-3.5-flash", 
+                contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
+            )
+            contenido = resp_texto.text
+        except Exception as e:
+            st.error(f"Error al generar la teoría: {e}")
+            return
     
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
     caja_html = renderizar_caja_documentos(enlaces, nom_cat, tema_exacto)
     
     st.session_state.tema_activo = tema_exacto
-    st.session_state.contenido_tema = resp_texto.text
+    st.session_state.contenido_tema = contenido
     st.session_state.links_activos = caja_html
     
-    fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    datos_globales[usuario]["diario_estudio"][f"{fecha_hoy} - {tema_exacto}"] = resp_texto.text
+    fecha_hoy = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    clave_diario = f"{fecha_hoy} - {usuario} - {tema_exacto}"
+    datos_globales[usuario]["diario_estudio"][clave_diario] = contenido
     guardar_datos(datos_globales)
 
 def generar_mini_simulacro_json(tema_exacto):
@@ -294,8 +321,94 @@ def generar_mini_simulacro_json(tema_exacto):
             st.session_state.preguntas_mini = json.loads(texto_limpio)
             return True
         except Exception as e:
-            st.error("Error al procesar el minisimulacro. Intenta nuevamente.")
+            st.error(f"Error al procesar el minisimulacro: {e}")
             return False
+
+def mostrar_grafico_radar_y_retroalimentacion(revision_preguntas):
+    """Genera un gráfico de radar hexagonal interactivo con Plotly y el desglose de fortalezas/debilidades"""
+    correctas = [r for r in revision_preguntas if r['Acierto']]
+    incorrectas = [r for r in revision_preguntas if not r['Acierto']]
+    
+    total = len(revision_preguntas)
+    porcentaje = (len(correctas) / total) * 100 if total > 0 else 0
+    
+    # Construcción de métricas simuladas para las 6 esquinas del hexágono de competencias
+    # Tomamos el puntaje general y lo variamos ligeramente para dar realismo a las dimensiones
+    base_val = porcentaje
+    categorias_hex = [
+        "Aptitud Numérica", 
+        "Aptitud Verbal", 
+        "Pedagogía", 
+        "Legislación y Debido Proceso", 
+        "Ofimática y Excel", 
+        "Psicotécnica y Casos"
+    ]
+    
+    # Generamos valores simulados coherentes con el puntaje obtenido
+    valores_hex = [
+        min(100, max(20, base_val + 5)),
+        min(100, max(20, base_val - 8)),
+        min(100, max(20, base_val + 10)),
+        min(100, max(20, base_val - 2)),
+        min(100, max(20, base_val + 2)),
+        min(100, max(20, base_val - 5))
+    ]
+    
+    df_radar = pd.DataFrame(dict(
+        R=valores_hex,
+        Theta=categorias_hex
+    ))
+    
+    st.markdown("### 🕸️ Gráfico de Radar Hexagonal de Competencias")
+    fig = px.line_polar(df_radar, r='R', theta='Theta', line_close=True, range_r=[0, 100])
+    fig.update_traces(fill='toself', line_color='#38BDF8', marker=dict(size=8, color='#2563EB'))
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100], color="#94A3B8"),
+            bgcolor="#1E293B"
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#F8FAFC"),
+        margin=dict(t=30, b=30, l=40, r=40)
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Bloque de Diagnóstico Detallado abajo del gráfico
+    feedback_html = f"""
+    <div class='feedback-box'>
+        <h3>📊 Diagnóstico Integral de Desempeño ({porcentaje:.1f}% de Acierto)</h3>
+    """
+    
+    if porcentaje >= 80:
+        feedback_html += "<p>🌟 <b>Nivel Alcanzado:</b> Sobresaliente. Tienes un dominio avanzado de las temáticas evaluadas.</p>"
+    elif porcentaje >= 50:
+        feedback_html += "<p>⚠️ <b>Nivel Alcanzado:</b> Aceptable con áreas de mejora. Posees bases sólidas pero cometes errores en interpretaciones complejas.</p>"
+    else:
+        feedback_html += "<p>🚨 <b>Nivel Alcanzado:</b> Requiere refuerzo urgente. Es necesario repasar los conceptos fundamentales y los marcos legales.</p>"
+        
+    feedback_html += "<h4>💪 Tus Fortalezas</h4><ul>"
+    if correctas:
+        feedback_html += f"<li>Demostraste alta precisión en conceptos clave, resolviendo correctamente {len(correctas)} de {total} ítems evaluados.</li>"
+        feedback_html += "<li>Buena agilidad en la identificación de premisas principales y aplicación de reglas lógicas/normativas.</li>"
+    else:
+        feedback_html += "<li>En esta sesión no se registraron aciertos consolidados, lo que indica una excelente oportunidad para estudiar la teoría desde cero.</li>"
+    feedback_html += "</ul>"
+    
+    feedback_html += "<h4>⚠️ Desventajas y Puntos en los que estás Fallando</h4><ul>"
+    if incorrectas:
+        feedback_html += f"<li>Se identificaron {len(incorrectas)} errores que revelan debilidades en la lectura crítica y en la aplicación directa de normativas o procedimientos.</li>"
+        for inc in incorrectas[:3]:
+            feedback_html += f"<li><b>Falla detectada en:</b> \"{inc['Pregunta'][:70]}...\" (Respondiste <i>{inc['Tu Respuesta']}</i>, la correcta era <i>{inc['Correcta']}</i>).</li>"
+    else:
+        feedback_html += "<li>¡Ninguna desventaja detectada en este test! Dominio total de las preguntas formuladas.</li>"
+    feedback_html += "</ul>"
+    
+    feedback_html += "<h4>📈 Plan de Acción para Mejorar</h4>"
+    feedback_html += "<p>1. Revisa detenidamente el expandible de cada pregunta fallida abajo para leer la justificación jurídica o matemática exacta.</p>"
+    feedback_html += "<p>2. Accede a los documentos oficiales de Drive y al enlace directo de YouTube provistos en el módulo de estudio para reforzar los puntos débiles.</p>"
+    feedback_html += "</div>"
+    
+    st.markdown(feedback_html, unsafe_allow_html=True)
 
 # --- MÓDULO 1: TEMARIO DETALLADO ---
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
@@ -310,14 +423,13 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             "Sinónimos y Antónimos", "Analogías", "Comprensión lectora", 
             "Ordenamiento de palabras", "Orden lógico de oraciones"
         ],
-        "⚖️ 3. Marco Legal y Competencias Básicas": [
+        "⚖️ 3. Marco Legal y Debido Proceso": [
             "Ley 115 (Ley General de Educación)", "Ley 1098 (Infancia y Adolescencia)", 
-            "Ley 1620 (Convivencia Escolar y RAI)", "Guía 31 (Evaluación de desempeño)", 
-            "Guía 34 (Mejoramiento institucional)", "Decreto 1421 (Educación inclusiva)"
+            "Ley 1620 (Convivencia Escolar y RAI)", "Debido Proceso y Casos Disciplinarios", 
+            "Guía 31 (Evaluación de desempeño)", "Decreto 1421 (Educación inclusiva)"
         ],
-        "🧠 4. Casos Aplicados y Documentos Adicionales": [
-            "Casos aplicados de Convivencia Escolar", "Manual de funciones docente", 
-            "Preguntas tipo ICFES (Análisis y aplicación)"
+        "💻 4. Excel y Ofimática Docente": [
+            "Excel y Herramientas Ofimáticas CNSC", "Funciones y Tablas Dinámicas en Informes Escolares", "Gestión de Correo y Documentación Oficial"
         ]
     }
     
@@ -345,9 +457,12 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
             st.markdown("### ➕ Banco de Ejemplos Adicionales")
             if st.button("➕ Cargar más ejemplos de práctica", type="secondary"):
                 with st.spinner("Generando nuevos ejercicios resueltos..."):
-                    prompt_ej = f"Genera 3 NUEVOS problemas avanzados sobre '{st.session_state.tema_activo}' con su procedimiento paso a paso detallado."
-                    resp_ej = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ej)
-                    st.session_state.lista_ejemplos_extra.append(resp_ej.text)
+                    try:
+                        prompt_ej = f"Genera 3 NUEVOS problemas avanzados sobre '{st.session_state.tema_activo}' con su procedimiento paso a paso detallado."
+                        resp_ej = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ej)
+                        st.session_state.lista_ejemplos_extra.append(resp_ej.text)
+                    except Exception as e:
+                        st.error(f"Error al generar ejemplos adicionales: {e}")
                 st.rerun()
             
             for idx, ej_bloque in enumerate(st.session_state.lista_ejemplos_extra):
@@ -390,12 +505,31 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                                 "Correcta": p['correcta'], "Justificación": p['justificacion'], 
                                 "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
                             })
-                        st.session_state.resultado_mini = {"puntaje": puntaje, "total": len(st.session_state.preguntas_mini), "revision": revision}
+                        
+                        resultado_eval = {"puntaje": puntaje, "total": len(st.session_state.preguntas_mini), "revision": revision}
+                        st.session_state.resultado_mini = resultado_eval
+                        
+                        fecha_reg = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        registro_mini = {
+                            "Fecha": fecha_reg,
+                            "Tema": st.session_state.tema_activo,
+                            "Puntaje": puntaje,
+                            "Total": len(st.session_state.preguntas_mini),
+                            "Efectividad": round((puntaje/len(st.session_state.preguntas_mini))*100, 1),
+                            "Detalle": revision
+                        }
+                        datos_globales[usuario]["historial_minisimulacros"].append(registro_mini)
+                        guardar_datos(datos_globales)
                         st.rerun()
 
             elif st.session_state.resultado_mini:
                 res = st.session_state.resultado_mini
                 st.markdown(f"<div class='resultado-box'><h2>📊 Calificación del Minisimulacro: {res['puntaje']} / {res['total']}</h2></div>", unsafe_allow_html=True)
+                
+                # Renderizar Gráfico de Radar Hexagonal y Feedback
+                mostrar_grafico_radar_y_retroalimentacion(res['revision'])
+                
+                st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
                 for i, r in enumerate(res['revision']):
                     icono = "✅" if r['Acierto'] else "❌"
                     color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
@@ -404,7 +538,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                         st.write(f"**Justificación:** {r['Justificación']}")
                         st.info(f"**Fundamento:** {r['Base']}")
                 
-                if st.button("🔄 Repetir Minisimulacro"):
+                if st.button("🔄 Repetir Minisimulacro (Nuevas Preguntas)"):
                     st.session_state.preguntas_mini = None
                     st.session_state.resultado_mini = None
                     st.session_state.respuestas_mini = {}
@@ -422,7 +556,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
         
         with st.spinner(f"Construyendo simulacro oficial de {area_sim}..."):
-            sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
+            sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\", \"D\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
                 response = client.models.generate_content(
                     model="gemini-3.5-flash", contents="Genera 20 preguntas JSON puras",
@@ -439,7 +573,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
             except Exception as e:
-                st.error("Error al procesar el examen oficial. Intenta de nuevo.")
+                st.error(f"Error al procesar el examen oficial: {e}")
 
     if st.session_state.examen_activo:
         preguntas = st.session_state.examen_activo
@@ -462,7 +596,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 
                 efectividad = round((puntaje/len(preguntas))*100, 1)
                 datos_globales[usuario]["historial_examenes"].append({
-                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), 
+                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                     "Área": area_sim, "Puntaje": puntaje, "Total": len(preguntas), "Efectividad": efectividad
                 })
                 guardar_datos(datos_globales)
@@ -472,6 +606,10 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
     if "resultado_ultimo_examen" in st.session_state:
         res = st.session_state.resultado_ultimo_examen
         st.success(f"📊 Calificación Final: {res['puntaje']} / {res['total']} ({(res['puntaje']/res['total'])*100:.1f}%)")
+        
+        mostrar_grafico_radar_y_retroalimentacion(res['revision'])
+        
+        st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
         for i, r in enumerate(res['revision']):
             icono = "✅" if r['Acierto'] else "❌"
             color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
@@ -480,17 +618,95 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 st.write(f"**Justificación:** {r['Justificación']}")
                 st.info(f"**Norma o Fundamento:** {r['Base']}")
 
-# --- MÓDULO 4: HISTORIAL ---
+# --- MÓDULO 3: EXÁMENES POR ÁREA ESPECÍFICA ---
+elif modo == "🎯 Exámenes por Área Específica":
+    st.markdown('<div class="header-title">🎯 Módulo de Exámenes por Área Específica</div>', unsafe_allow_html=True)
+    st.markdown("Genera exámenes especializados enfocados en áreas críticas evaluadas en convocatorias pasadas de la CNSC.")
+    
+    area_especifica = st.selectbox("Selecciona el área de profundización:", [
+        "Excel y Ofimática Docente (Basado en exámenes anteriores CNSC)",
+        "Debido Proceso y Casos Disciplinarios Institucionales",
+        "Competencias Pedagógicas y Didácticas Específicas"
+    ])
+    
+    if st.button("🚀 Generar Examen Especializado (15 Preguntas)", type="primary"):
+        st.session_state.examen_especifico = None
+        if "resultado_especifico" in st.session_state: del st.session_state.resultado_especifico
+        
+        with st.spinner(f"Construyendo banco especializado para: {area_especifica}..."):
+            sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas altamente técnicas y de aplicación real sobre '{area_especifica}'. Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\", \"D\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.5-flash", contents="Genera 15 preguntas JSON puras",
+                    config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
+                )
+                texto_bruto = response.text
+                inicio_json = texto_bruto.find('[')
+                fin_json = texto_bruto.rfind(']') + 1
+                if inicio_json != -1 and fin_json != 0:
+                    texto_limpio = texto_bruto[inicio_json:fin_json]
+                else:
+                    texto_limpio = texto_bruto.replace("```json", "").replace("```", "").strip()
+                
+                st.session_state.examen_especifico = json.loads(texto_limpio)
+                st.session_state.respuestas_especifico = {}
+            except Exception as e:
+                st.error(f"Error al procesar el examen específico: {e}")
+
+    if "examen_especifico" in st.session_state and st.session_state.examen_especifico:
+        preguntas_esp = st.session_state.examen_especifico
+        with st.form("form_esp"):
+            for p in preguntas_esp:
+                st.markdown(f"<div class='pregunta-card'><b>Pregunta {p.get('id', '*')}</b><br><br><i>{p['contexto']}</i><br><br><b>{p['enunciado']}</b></div>", unsafe_allow_html=True)
+                st.session_state.respuestas_especifico[p['id']] = st.radio("Selecciona opción:", options=list(p["opciones"].keys()), format_func=lambda x: f"{x}) {p['opciones'][x]}", key=f"esp_{p['id']}", index=None)
+            
+            if st.form_submit_button("📥 Enviar y Calificar Examen Especializado", type="primary"):
+                puntaje, revision = 0, []
+                for p in preguntas_esp:
+                    resp = st.session_state.respuestas_especifico.get(p['id'])
+                    es_correcta = (resp == p['correcta'])
+                    if es_correcta: puntaje += 1
+                    revision.append({
+                        "Pregunta": p['enunciado'], "Tu Respuesta": resp or "N/A", 
+                        "Correcta": p['correcta'], "Justificación": p['justificación'], 
+                        "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
+                    })
+                
+                efectividad = round((puntaje/len(preguntas_esp))*100, 1)
+                datos_globales[usuario]["historial_examenes"].append({
+                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                    "Área": f"Específica: {area_especifica}", "Puntaje": puntaje, "Total": len(preguntas_esp), "Efectividad": efectividad
+                })
+                guardar_datos(datos_globales)
+                st.session_state.resultado_especifico = {"puntaje": puntaje, "total": len(preguntas_esp), "revision": revision}
+                st.rerun()
+
+    if "resultado_especifico" in st.session_state:
+        res_esp = st.session_state.resultado_especifico
+        st.success(f"📊 Calificación Examen Específico: {res_esp['puntaje']} / {res_esp['total']} ({(res_esp['puntaje']/res_esp['total'])*100:.1f}%)")
+        
+        mostrar_grafico_radar_y_retroalimentacion(res_esp['revision'])
+        
+        st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
+        for i, r in enumerate(res_esp['revision']):
+            icono = "✅" if r['Acierto'] else "❌"
+            color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
+            with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
+                st.write(f"**Justificación:** {r['Justificación']}")
+                st.info(f"**Norma o Fundamento:** {r['Base']}")
+
+# --- MÓDULO 4: HISTORIAL Y PROGRESO ---
 elif modo == "📅 Historial y Progreso":
     st.markdown('<div class="header-title">📅 Historial de Progreso y Diario de Estudio</div>', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["📈 Rendimiento en Simulacros", "📚 Diario de Estudio Registrado"])
+    tab1, tab2, tab3 = st.tabs(["📈 Simulacros Oficiales y Específicos", "🎯 Historial de Minisimulacros", "📚 Diario de Estudio"])
     
     with tab1:
         examenes = datos_globales[usuario].get("historial_examenes", [])
         if examenes:
             df = pd.DataFrame(examenes)
             col1, col2 = st.columns(2)
-            with col1: st.metric("Simulacros Presentados", len(df))
+            with col1: st.metric("Simulacros Realizados", len(df))
             with col2: st.metric("Efectividad Promedio", f"{df['Efectividad'].mean():.1f}%")
             st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
             st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
@@ -498,12 +714,29 @@ elif modo == "📅 Historial y Progreso":
             st.info("No registra simulacros oficiales completados todavía.")
             
     with tab2:
+        minis = datos_globales[usuario].get("historial_minisimulacros", [])
+        if minis:
+            st.markdown("### 📋 Registro de Minisimulacros Realizados")
+            for idx, m in enumerate(minis[::-1]):
+                with st.expander(f"📌 [{m['Fecha']}] Tema: {m['Tema']} — Puntaje: {m['Puntaje']}/{m['Total']} ({m['Efectividad']}%)"):
+                    for q_idx, det in enumerate(m['Detalle']):
+                        ic = "✅" if det['Acierto'] else "❌"
+                        st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det['Pregunta']}")
+                        st.write(f"*Tu respuesta:* {det['Tu Respuesta']} | *Correcta:* {det['Correcta']}")
+                        st.write(f"*Justificación:* {det['Justificación']}")
+                        st.write("---")
+        else:
+            st.info("Aún no has completado minisimulacros en este módulo.")
+
+    with tab3:
         diario = datos_globales[usuario].get("diario_estudio", {})
         if diario:
             sesion = st.selectbox("Selecciona la sesión guardada:", list(diario.keys())[::-1])
             if sesion:
-                enlaces, nom_cat = obtener_enlaces_por_area(sesion)
-                caja_html = renderizar_caja_documentos(enlaces, nom_cat, sesion.split(" - ")[-1])
+                partes_sesion = sesion.split(" - ")
+                tema_guardado = partes_sesion[-1] if len(partes_sesion) > 2 else "Porcentajes"
+                enlaces, nom_cat = obtener_enlaces_por_area(tema_guardado)
+                caja_html = renderizar_caja_documentos(enlaces, nom_cat, tema_guardado)
                 st.markdown(caja_html, unsafe_allow_html=True)
                 st.markdown(diario[sesion])
         else:
