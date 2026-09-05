@@ -6,6 +6,7 @@ import streamlit as st
 from google import genai
 from google.genai import types
 from streamlit_gsheets import GSheetsConnection 
+import openai  # <-- NUEVA LIBRERÍA IMPORTADA
 
 # --- 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS VISUALES ---
 st.set_page_config(page_title="Plataforma Experta CNSC 2026", page_icon="🏛️", layout="wide")
@@ -63,38 +64,70 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES SEGURIZADAS, ROTACIÓN DE LLAVES Y MAPA DOCUMENTAL ---
-LLAVES_DISPONIBLES = []
+# --- 2. CREDENCIALES SEGURIZADAS Y ROTACIÓN MULTI-MOTOR (GEMINI + OPENAI) ---
+LLAVES_GEMINI = []
 if "GEMINI_API_KEY" in st.secrets:
-    LLAVES_DISPONIBLES.append(st.secrets["GEMINI_API_KEY"])
+    LLAVES_GEMINI.append(st.secrets["GEMINI_API_KEY"])
 if "GEMINI_API_KEY_2" in st.secrets:
-    LLAVES_DISPONIBLES.append(st.secrets["GEMINI_API_KEY_2"])
+    LLAVES_GEMINI.append(st.secrets["GEMINI_API_KEY_2"])
+
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", None)
 
 if "indice_llave_actual" not in st.session_state:
     st.session_state.indice_llave_actual = 0
 
-def llamar_gemini_con_rotacion(contents, config_params=None):
-    """Ejecuta la llamada a la API rotando automáticamente entre llaves si ocurre un error (ej. límite de cuota)."""
-    if not LLAVES_DISPONIBLES:
-        raise Exception("No hay llaves de API configuradas en st.secrets.")
+class RespuestaIA:
+    """Clase puente para homogeneizar la respuesta entre Gemini y OpenAI"""
+    def __init__(self, text):
+        self.text = text
 
+def llamar_ia_con_rotacion(contents, config_params=None):
+    """Ejecuta la llamada a la API rotando primero entre llaves de Gemini y usando OpenAI como escudo final."""
     errores = []
-    # Intenta usar las llaves una por una hasta que funcione o se agoten todas
-    for _ in range(len(LLAVES_DISPONIBLES)):
-        llave_actual = LLAVES_DISPONIBLES[st.session_state.indice_llave_actual]
+    
+    # 1. Intentar con el escuadrón de llaves Gemini
+    if LLAVES_GEMINI:
+        for _ in range(len(LLAVES_GEMINI)):
+            llave_actual = LLAVES_GEMINI[st.session_state.indice_llave_actual]
+            try:
+                temp_client = genai.Client(api_key=llave_actual)
+                if config_params:
+                    resp = temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents, config=config_params)
+                    return RespuestaIA(resp.text)
+                else:
+                    resp = temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents)
+                    return RespuestaIA(resp.text)
+            except Exception as e:
+                errores.append(f"Gemini Key {st.session_state.indice_llave_actual + 1}: {str(e)}")
+                st.session_state.indice_llave_actual = (st.session_state.indice_llave_actual + 1) % len(LLAVES_GEMINI)
+    
+    # 2. Si las de Gemini murieron por límite, invocar a OpenAI como respaldo
+    if OPENAI_API_KEY:
         try:
-            temp_client = genai.Client(api_key=llave_actual)
-            if config_params:
-                return temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents, config=config_params)
-            else:
-                return temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents)
-        except Exception as e:
-            errores.append(str(e))
-            # Si falla, rota a la siguiente llave inmediatamente
-            st.session_state.indice_llave_actual = (st.session_state.indice_llave_actual + 1) % len(LLAVES_DISPONIBLES)
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            messages = []
             
-    # Si sale del bucle, significa que todas fallaron
-    raise Exception(f"Todas las llaves agotaron su cuota o fallaron. Errores registrados: {errores}")
+            # Traducir los parámetros de configuración de Gemini a OpenAI
+            if config_params and hasattr(config_params, 'system_instruction') and config_params.system_instruction:
+                messages.append({"role": "system", "content": str(config_params.system_instruction)})
+            
+            messages.append({"role": "user", "content": contents})
+            
+            temp = 0.7
+            if config_params and hasattr(config_params, 'temperature') and config_params.temperature is not None:
+                temp = config_params.temperature
+                
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=temp
+            )
+            return RespuestaIA(response.choices[0].message.content)
+        except Exception as e:
+            errores.append(f"OpenAI Backup: {str(e)}")
+
+    raise Exception(f"Fallo masivo. Todas las IA (Gemini y OpenAI) agotaron su cuota. Errores detectados: {errores}")
+
 
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
@@ -246,8 +279,8 @@ for usr in USUARIOS_PERMITIDOS:
         datos_globales[usr]["historial_minisimulacros"] = []
 
 # --- 4. VALIDACIÓN DE LOGIN ---
-if not LLAVES_DISPONIBLES:
-    st.error("⚠️ No se ha configurado ninguna API Key de Gemini en st.secrets.")
+if not LLAVES_GEMINI and not OPENAI_API_KEY:
+    st.error("⚠️ No se ha configurado ninguna API Key de Gemini ni de OpenAI en st.secrets.")
     st.stop()
 
 if "usuario_actual" not in st.session_state:
@@ -361,7 +394,7 @@ def generar_teoria_y_ejemplos(tema_exacto):
 
     with st.spinner(f"Redactando clase magistral y materiales para: {tema_exacto}..."):
         try:
-            resp_texto = llamar_gemini_con_rotacion(contents=prompt_dinamico)
+            resp_texto = llamar_ia_con_rotacion(contents=prompt_dinamico)
             contenido = resp_texto.text
         except Exception as e:
             st.error(f"❌ Error al conectar con el servidor IA: {e}")
@@ -389,7 +422,7 @@ def generar_mini_simulacro_json(tema_exacto):
                 response_mime_type="application/json",
                 temperature=0.7
             )
-            resp_json = llamar_gemini_con_rotacion(contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}", config_params=cfg)
+            resp_json = llamar_ia_con_rotacion(contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}", config_params=cfg)
             texto_bruto = resp_json.text
             inicio_json = texto_bruto.find('[')
             fin_json = texto_bruto.rfind(']') + 1
@@ -498,7 +531,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 with st.spinner("Generando nuevos ejercicios resueltos..."):
                     try:
                         prompt_ej = f"Genera 3 NUEVOS problemas avanzados sobre '{st.session_state.tema_activo}' con su procedimiento detallado."
-                        resp_ej = llamar_gemini_con_rotacion(contents=prompt_ej)
+                        resp_ej = llamar_ia_con_rotacion(contents=prompt_ej)
                         st.session_state.lista_ejemplos_extra.append(resp_ej.text)
                         st.rerun()
                     except Exception as e:
@@ -602,7 +635,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
             sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Las opciones deben ser SOLAMENTE TRES (A, B y C). Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
                 cfg = types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
-                response = llamar_gemini_con_rotacion(contents="Genera 20 preguntas JSON puras", config_params=cfg)
+                response = llamar_ia_con_rotacion(contents="Genera 20 preguntas JSON puras", config_params=cfg)
                 texto_limpio = response.text[response.text.find('['):response.text.rfind(']')+1] if '[' in response.text else response.text.replace("```json", "").replace("```", "").strip()
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
@@ -677,7 +710,7 @@ elif modo == "🎯 Exámenes por Área Específica":
                 
             try:
                 cfg = types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
-                response = llamar_gemini_con_rotacion(contents="Genera 15 preguntas JSON puras", config_params=cfg)
+                response = llamar_ia_con_rotacion(contents="Genera 15 preguntas JSON puras", config_params=cfg)
                 texto_limpio = response.text[response.text.find('['):response.text.rfind(']')+1] if '[' in response.text else response.text.replace("```json", "").replace("```", "").strip()
                 st.session_state.examen_especifico = json.loads(texto_limpio)
                 st.session_state.respuestas_especifico = {}
