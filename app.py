@@ -117,7 +117,9 @@ VIDEOS_EXACTOS = {
     "Análisis de gráficas": "https://www.youtube.com/watch?v=9x3V1l8k57A",
     "Pensamiento abstracto": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
     "Debido Proceso y Casos Disciplinarios": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
-    "Excel y Herramientas Ofimáticas CNSC": "https://www.youtube.com/watch?v=hN7mQ02lJ40"
+    "Excel y Herramientas Ofimáticas CNSC": "https://www.youtube.com/watch?v=hN7mQ02lJ40",
+    "Guía 49": "https://www.youtube.com/watch?v=1x2v3u4v5w6",
+    "Manual de Funciones": "https://www.youtube.com/watch?v=1x2v3u4v5w6"
 }
 
 def obtener_enlaces_por_area(area):
@@ -126,7 +128,7 @@ def obtener_enlaces_por_area(area):
         return BIBLIOTECA_ESPECIFICA["Aptitud Numérica"], "Aptitud Numérica"
     elif any(palabra in area_lower for palabra in ["sinonimo", "antonimo", "analogia", "lectora", "oraciones", "verbal"]):
         return BIBLIOTECA_ESPECIFICA["Aptitud Verbal"], "Aptitud Verbal"
-    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "legislacion", "proceso"]):
+    elif any(palabra in area_lower for palabra in ["ley", "decreto", "guia", "guía", "legislacion", "proceso", "manual"]):
         return BIBLIOTECA_ESPECIFICA["Legislación Educativa y Debido Proceso"], "Legislación Educativa y Debido Proceso"
     elif any(palabra in area_lower for palabra in ["excel", "office", "ofimatica", "word", "powerpoint"]):
         return BIBLIOTECA_ESPECIFICA["Excel y Ofimática Docente"], "Excel y Ofimática Docente"
@@ -283,15 +285,17 @@ REGLAS ESTRICTAS:
 """
 
 def obtener_instruccion_json(tema_exacto):
-    if "proceso" in tema_exacto.lower() or "disciplinario" in tema_exacto.lower() or "ley 1620" in tema_exacto.lower():
+    # MEJORA 2: Exigir explícitamente contextos muy largos para procesos legales
+    if any(k in tema_exacto.lower() for k in ["proceso", "disciplinario", "ley 1620", "guía 49", "manual de funciones"]):
         return f"""
-        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas y EXTENSAS basadas en casos prácticos sobre: {tema_exacto}. 
+        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas y MUY EXTENSAS basadas en casos prácticos tipo juicio situacional sobre: {tema_exacto}. 
+        Cada pregunta DEBE tener un contexto argumentado sumamente detallado (MÍNIMO 5 a 6 líneas describiendo una situación real en una institución educativa, con actores, dilemas y hechos).
         Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
         Formato estricto:
         [
           {{
             "id": 1,
-            "contexto": "Caso detallado...",
+            "contexto": "Caso escolar detallado y extenso...",
             "enunciado": "Pregunta analítica...",
             "opciones": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
             "correcta": "A",
@@ -332,7 +336,6 @@ def generar_teoria_y_ejemplos(tema_exacto):
             )
             contenido = resp_texto.text
         except Exception as e:
-            # ESCUDO: Mostrará el error real sin recargar la página
             st.error(f"❌ Error de Gemini (Posible límite de cuota superado): {e}")
             return False
     
@@ -414,8 +417,6 @@ def mostrar_diagnostico_y_retroalimentacion(revision_preguntas):
     feedback_html += "<h4>⚠️ Desventajas y Puntos en los que estás Fallando</h4><ul>"
     if incorrectas:
         feedback_html += f"<li>Se identificaron {len(incorrectas)} errores que revelan debilidades en la lectura crítica y en la aplicación directa de normativas.</li>"
-        for inc in incorrectas[:3]:
-            feedback_html += f"<li><b>Falla detectada en:</b> \"{inc['Pregunta'][:70]}...\" (Respondiste <i>{inc['Tu Respuesta']}</i>, la correcta era <i>{inc['Correcta']}</i>).</li>"
     else:
         feedback_html += "<li>¡Ninguna desventaja detectada en este test! Dominio total de las preguntas formuladas.</li>"
     feedback_html += "</ul></div>"
@@ -426,6 +427,7 @@ def mostrar_diagnostico_y_retroalimentacion(revision_preguntas):
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
     st.markdown('<div class="header-title">🗺️ Módulo de Estudio Detallado</div>', unsafe_allow_html=True)
     
+    # MEJORA 4: Anexar Guía 49 y Manual de Funciones
     TEMARIO_DESGLOSADO = {
         "📐 1. Aptitud Numérica": [
             "Porcentajes", "Regla de 3 Simple (Directa e Inversa)", "Regla de 3 Compuesta", 
@@ -438,7 +440,8 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
         "⚖️ 3. Marco Legal y Debido Proceso": [
             "Ley 115 (Ley General de Educación)", "Ley 1098 (Infancia y Adolescencia)", 
             "Ley 1620 (Convivencia Escolar y RAI)", "Debido Proceso y Casos Disciplinarios", 
-            "Guía 31 (Evaluación de desempeño)", "Decreto 1421 (Educación inclusiva)"
+            "Guía 31 (Evaluación de desempeño)", "Decreto 1421 (Educación inclusiva)",
+            "Guía 49", "Manual de Funciones"
         ],
         "💻 4. Excel y Ofimática Docente": [
             "Excel y Herramientas Ofimáticas CNSC", "Funciones y Tablas Dinámicas en Informes Escolares", "Gestión de Correo y Documentación Oficial"
@@ -455,7 +458,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                     if st.button(f"📘 {subtema}", key=f"btn_{subtema}"):
                         exito = generar_teoria_y_ejemplos(subtema)
                         if exito:
-                            st.rerun() # <- Sólo recarga si no hubo error
+                            st.rerun()
 
     with col_contenido:
         if st.session_state.contenido_tema:
@@ -511,8 +514,11 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                             resp = st.session_state.respuestas_mini.get(p['id'])
                             es_correcta = (resp == p['correcta'])
                             if es_correcta: puntaje += 1
+                            # MEJORA 3: Guardar también las opciones para el despliegue
                             revision.append({
-                                "Pregunta": p['enunciado'], "Tu Respuesta": resp or "Sin responder", 
+                                "Pregunta": p['enunciado'],
+                                "Opciones": p['opciones'], 
+                                "Tu Respuesta": resp or "Sin responder", 
                                 "Correcta": p['correcta'], "Justificación": p['justificacion'], 
                                 "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
                             })
@@ -537,12 +543,18 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 
                 mostrar_diagnostico_y_retroalimentacion(res['revision'])
                 
+                # MEJORA 3: Mostrar evaluación completa (pregunta, opciones y justificación)
                 st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
                 for i, r in enumerate(res['revision']):
                     icono = "✅" if r['Acierto'] else "❌"
                     color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
                     with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
                         st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
+                        st.write(f"**Pregunta:** {r['Pregunta']}")
+                        st.write("**Opciones:**")
+                        if "Opciones" in r:
+                            for k, v in r['Opciones'].items():
+                                st.write(f"- **{k})** {v}")
                         st.write(f"**Justificación:** {r['Justificación']}")
                         st.info(f"**Fundamento:** {r['Base']}")
                 
@@ -551,6 +563,8 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                     st.session_state.resultado_mini = None
                     st.session_state.respuestas_mini = {}
                     st.rerun()
+        else:
+            st.info("👈 Selecciona un tema en el menú de la izquierda para desplegar el contenido académico, enlaces de Drive y el link directo del video.")
 
 # --- MÓDULO 2: SIMULACRO OFICIAL ---
 elif modo == "📝 Simulacro Oficial (20 Preguntas)":
@@ -588,7 +602,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                     es_correcta = (resp == p['correcta'])
                     if es_correcta: puntaje += 1
                     revision.append({
-                        "Pregunta": p['enunciado'], "Tu Respuesta": resp or "N/A", 
+                        "Pregunta": p['enunciado'], "Opciones": p['opciones'], "Tu Respuesta": resp or "N/A", 
                         "Correcta": p['correcta'], "Justificación": p['justificacion'], 
                         "Base": p.get('cita_legal', 'N/A'), "Acierto": es_correcta
                     })
@@ -596,7 +610,7 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
                 efectividad = round((puntaje/len(preguntas))*100, 1)
                 datos_globales[usuario]["historial_examenes"].append({
                     "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                    "Área": area_sim, "Puntaje": puntaje, "Total": len(preguntas), "Efectividad": efectividad
+                    "Área": area_sim, "Puntaje": puntaje, "Total": len(preguntas), "Efectividad": efectividad, "Detalle": revision
                 })
                 guardar_datos(datos_globales)
                 st.session_state.resultado_ultimo_examen = {"puntaje": puntaje, "total": len(preguntas), "revision": revision}
@@ -609,13 +623,18 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         for i, r in enumerate(res['revision']):
             icono = "✅" if r['Acierto'] else "❌"
             with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                st.write(f"**Pregunta:** {r['Pregunta']}")
+                if "Opciones" in r:
+                    for k, v in r['Opciones'].items():
+                        st.write(f"- **{k})** {v}")
                 st.write(f"**Justificación:** {r['Justificación']}")
 
 # --- MÓDULO 3: EXÁMENES POR ÁREA ESPECÍFICA ---
 elif modo == "🎯 Exámenes por Área Específica":
+    # MEJORA 5: Mantener y pulir exámenes específicos
     st.markdown('<div class="header-title">🎯 Módulo de Exámenes por Área Específica</div>', unsafe_allow_html=True)
     area_especifica = st.selectbox("Selecciona el área de profundización:", [
-        "Excel y Ofimática Docente (Basado en exámenes anteriores CNSC)",
+        "Excel y Ofimática Docente",
         "Debido Proceso y Casos Disciplinarios Institucionales",
         "Competencias Pedagógicas y Didácticas Específicas"
     ])
@@ -625,7 +644,12 @@ elif modo == "🎯 Exámenes por Área Específica":
         if "resultado_especifico" in st.session_state: del st.session_state.resultado_especifico
         
         with st.spinner(f"Construyendo banco especializado para: {area_especifica}..."):
-            sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas JSON sobre '{area_especifica}'."
+            # MEJORA 6: Instrucción estricta para Excel basada en exámenes anteriores de CNSC
+            if "Excel" in area_especifica:
+                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas de opción múltiple JSON sobre '{area_especifica}'. Las preguntas DEBEN estar estrictamente basadas en preguntas reales de exámenes anteriores de la CNSC para docentes (ej. atajos de teclado, funciones básicas de Excel para promedios de notas, uso de correspondencia en Word, manejo de Drive escolar)."
+            else:
+                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas JSON sobre '{area_especifica}'."
+                
             try:
                 response = client.models.generate_content(
                     model="gemini-3.5-flash", contents="Genera 15 preguntas JSON puras",
@@ -651,14 +675,14 @@ elif modo == "🎯 Exámenes por Área Específica":
                     es_correcta = (resp == p['correcta'])
                     if es_correcta: puntaje += 1
                     revision.append({
-                        "Pregunta": p['enunciado'], "Tu Respuesta": resp or "N/A", 
+                        "Pregunta": p['enunciado'], "Opciones": p['opciones'], "Tu Respuesta": resp or "N/A", 
                         "Correcta": p['correcta'], "Justificación": p['justificación'], 
                         "Acierto": es_correcta
                     })
                 
                 datos_globales[usuario]["historial_examenes"].append({
                     "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                    "Área": f"Específica: {area_especifica}", "Puntaje": puntaje, "Total": len(preguntas_esp), "Efectividad": round((puntaje/len(preguntas_esp))*100, 1)
+                    "Área": f"Específica: {area_especifica}", "Puntaje": puntaje, "Total": len(preguntas_esp), "Efectividad": round((puntaje/len(preguntas_esp))*100, 1), "Detalle": revision
                 })
                 guardar_datos(datos_globales)
                 st.session_state.resultado_especifico = {"puntaje": puntaje, "total": len(preguntas_esp), "revision": revision}
@@ -668,10 +692,20 @@ elif modo == "🎯 Exámenes por Área Específica":
         res_esp = st.session_state.resultado_especifico
         st.success(f"📊 Calificación Examen Específico: {res_esp['puntaje']} / {res_esp['total']}")
         mostrar_diagnostico_y_retroalimentacion(res_esp['revision'])
+        for i, r in enumerate(res_esp['revision']):
+            icono = "✅" if r['Acierto'] else "❌"
+            with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
+                st.write(f"**Pregunta:** {r['Pregunta']}")
+                if "Opciones" in r:
+                    for k, v in r['Opciones'].items():
+                        st.write(f"- **{k})** {v}")
+                st.write(f"**Justificación:** {r['Justificación']}")
 
 # --- MÓDULO 4: HISTORIAL Y PROGRESO ---
 elif modo == "📅 Historial y Progreso":
     st.markdown('<div class="header-title">📅 Historial de Progreso y Diario de Estudio</div>', unsafe_allow_html=True)
+    
+    # MEJORA 1: Generar historial de los minisimulacros (Se integra en las pestañas)
     tab1, tab2, tab3 = st.tabs(["📈 Simulacros Oficiales", "🎯 Minisimulacros", "📚 Diario de Estudio"])
     
     with tab1:
@@ -679,7 +713,24 @@ elif modo == "📅 Historial y Progreso":
         if examenes:
             df = pd.DataFrame(examenes)
             st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
-            st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+            # Eliminar columnas con objetos complejos de la vista principal de la tabla
+            df_visual = df.drop(columns=["Detalle"], errors="ignore")
+            st.dataframe(df_visual.iloc[::-1], use_container_width=True, hide_index=True)
+            
+            # Si existen detalles guardados del examen
+            st.markdown("### Detalles del último simulacro oficial guardado")
+            ultimo = examenes[-1]
+            if "Detalle" in ultimo:
+                with st.expander(f"Ver detalle del {ultimo['Fecha']} - {ultimo['Área']}"):
+                    for q_idx, det in enumerate(ultimo['Detalle']):
+                        ic = "✅" if det.get('Acierto', False) else "❌"
+                        st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det.get('Pregunta', '')}")
+                        if "Opciones" in det:
+                            for k, v in det['Opciones'].items():
+                                st.write(f"- **{k})** {v}")
+                        st.write(f"*Tu respuesta:* {det.get('Tu Respuesta', '')} | *Correcta:* {det.get('Correcta', '')}")
+                        st.write(f"*Justificación:* {det.get('Justificación', '')}")
+                        st.write("---")
         else:
             st.info("No registra simulacros.")
             
@@ -688,10 +739,16 @@ elif modo == "📅 Historial y Progreso":
         if minis:
             for idx, m in enumerate(minis[::-1]):
                 with st.expander(f"📌 [{m['Fecha']}] Tema: {m['Tema']} — Puntaje: {m['Puntaje']}/{m['Total']} ({m['Efectividad']}%)"):
-                    for q_idx, det in enumerate(m['Detalle']):
-                        ic = "✅" if det['Acierto'] else "❌"
-                        st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det['Pregunta']}")
-                        st.write(f"*Tu respuesta:* {det['Tu Respuesta']} | *Correcta:* {det['Correcta']}")
+                    for q_idx, det in enumerate(m.get('Detalle', [])):
+                        ic = "✅" if det.get('Acierto', False) else "❌"
+                        st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det.get('Pregunta', '')}")
+                        # MEJORA 3 también en el historial de minisimulacros (mostrar opciones)
+                        if "Opciones" in det:
+                            for k, v in det['Opciones'].items():
+                                st.write(f"- **{k})** {v}")
+                        st.write(f"*Tu respuesta:* {det.get('Tu Respuesta', '')} | *Correcta:* {det.get('Correcta', '')}")
+                        st.write(f"*Justificación:* {det.get('Justificación', '')}")
+                        st.write("---")
         else:
             st.info("Aún no has completado minisimulacros.")
 
