@@ -63,11 +63,38 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CREDENCIALES SEGURIZADAS Y MAPA DE DOCUMENTOS ---
-try:
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-except Exception:
-    API_KEY = None
+# --- 2. CREDENCIALES SEGURIZADAS, ROTACIÓN DE LLAVES Y MAPA DOCUMENTAL ---
+LLAVES_DISPONIBLES = []
+if "GEMINI_API_KEY" in st.secrets:
+    LLAVES_DISPONIBLES.append(st.secrets["GEMINI_API_KEY"])
+if "GEMINI_API_KEY_2" in st.secrets:
+    LLAVES_DISPONIBLES.append(st.secrets["GEMINI_API_KEY_2"])
+
+if "indice_llave_actual" not in st.session_state:
+    st.session_state.indice_llave_actual = 0
+
+def llamar_gemini_con_rotacion(contents, config_params=None):
+    """Ejecuta la llamada a la API rotando automáticamente entre llaves si ocurre un error (ej. límite de cuota)."""
+    if not LLAVES_DISPONIBLES:
+        raise Exception("No hay llaves de API configuradas en st.secrets.")
+
+    errores = []
+    # Intenta usar las llaves una por una hasta que funcione o se agoten todas
+    for _ in range(len(LLAVES_DISPONIBLES)):
+        llave_actual = LLAVES_DISPONIBLES[st.session_state.indice_llave_actual]
+        try:
+            temp_client = genai.Client(api_key=llave_actual)
+            if config_params:
+                return temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents, config=config_params)
+            else:
+                return temp_client.models.generate_content(model="gemini-3.5-flash", contents=contents)
+        except Exception as e:
+            errores.append(str(e))
+            # Si falla, rota a la siguiente llave inmediatamente
+            st.session_state.indice_llave_actual = (st.session_state.indice_llave_actual + 1) % len(LLAVES_DISPONIBLES)
+            
+    # Si sale del bucle, significa que todas fallaron
+    raise Exception(f"Todas las llaves agotaron su cuota o fallaron. Errores registrados: {errores}")
 
 USUARIOS_PERMITIDOS = ["MARCELA2026", "LELY2026", "KARO2026", "CHECHO2026", "ISABELLA2026", "CARLA2026"]
 CLAVE_SECRETA = "docente2026"
@@ -160,12 +187,10 @@ except Exception:
     conn = None
 
 def cargar_datos():
-    # Intenta leer localmente primero para asegurar velocidad y estabilidad
     if os.path.exists(ARCHIVO_DATOS):
         with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
             return json.load(f)
             
-    # Si no hay local, intenta leer de Drive
     if conn is not None:
         try:
             df = conn.read(worksheet="Historial", ttl=0)
@@ -189,14 +214,12 @@ def cargar_datos():
     return {usr: {"historial_examenes": [], "historial_minisimulacros": [], "diario_estudio": {}} for usr in USUARIOS_PERMITIDOS}
 
 def guardar_datos(datos):
-    # 1. Guardado local ultra seguro (Nunca pierdes tus datos)
     try:
         with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
             json.dump(datos, f, indent=4, ensure_ascii=False)
     except Exception as e:
         st.error(f"Error guardado local: {e}")
 
-    # 2. Guardado en Drive silencioso
     if conn is not None:
         try:
             filas = []
@@ -212,7 +235,7 @@ def guardar_datos(datos):
             if df_nuevo.empty: df_nuevo = pd.DataFrame(columns=["Usuario", "Tipo", "Clave", "Contenido"])
             conn.update(worksheet="Historial", data=df_nuevo)
         except Exception:
-            pass # Falla silenciosa en Drive, la app sigue funcionando gracias al archivo local
+            pass 
 
 datos_globales = cargar_datos()
 
@@ -222,9 +245,9 @@ for usr in USUARIOS_PERMITIDOS:
     if "historial_minisimulacros" not in datos_globales[usr]:
         datos_globales[usr]["historial_minisimulacros"] = []
 
-# --- 4. VALIDACIÓN DE API KEY Y LOGIN ---
-if not API_KEY:
-    st.error("⚠️ No se ha configurado la API Key de Gemini en st.secrets.")
+# --- 4. VALIDACIÓN DE LOGIN ---
+if not LLAVES_DISPONIBLES:
+    st.error("⚠️ No se ha configurado ninguna API Key de Gemini en st.secrets.")
     st.stop()
 
 if "usuario_actual" not in st.session_state:
@@ -248,7 +271,6 @@ if st.session_state.usuario_actual is None:
                 st.error("⚠️ Usuario o contraseña incorrectos.")
     st.stop()
 
-client = genai.Client(api_key=API_KEY)
 usuario = st.session_state.usuario_actual
 
 for key in ["examen_activo", "tema_activo", "contenido_tema", "lista_ejemplos_extra", "links_activos", "preguntas_mini", "resultado_mini"]:
@@ -285,11 +307,15 @@ REGLAS ESTRICTAS:
 """
 
 def obtener_instruccion_json(tema_exacto):
-    # MEJORA 2: Exigir explícitamente contextos muy largos para procesos legales
+    filtro_docente_aula = ""
+    if "manual de funciones" in tema_exacto.lower():
+        filtro_docente_aula = "ATENCIÓN CRÍTICA: Debes aplicar TODO el contenido, casos y normativa ÚNICA Y EXCLUSIVAMENTE para el perfil de 'Docente de Aula'. ESTÁ ESTRICTAMENTE PROHIBIDO generar preguntas sobre funciones de rectores, coordinadores o directivos docentes. "
+
     if any(k in tema_exacto.lower() for k in ["proceso", "disciplinario", "ley 1620", "guía 49", "manual de funciones"]):
         return f"""
-        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas y MUY EXTENSAS basadas en casos prácticos tipo juicio situacional sobre: {tema_exacto}. 
+        Eres un evaluador riguroso de la CNSC. {filtro_docente_aula}Genera EXACTAMENTE 10 preguntas complejas y MUY EXTENSAS basadas en casos prácticos tipo juicio situacional sobre: {tema_exacto}. 
         Cada pregunta DEBE tener un contexto argumentado sumamente detallado (MÍNIMO 5 a 6 líneas describiendo una situación real en una institución educativa, con actores, dilemas y hechos).
+        Las opciones de respuesta deben ser SOLAMENTE TRES (A, B y C). NO incluyas opción D.
         Devuelve ÚNICAMENTE un arreglo JSON válido, sin bloques de código Markdown alrededor.
         Formato estricto:
         [
@@ -297,7 +323,7 @@ def obtener_instruccion_json(tema_exacto):
             "id": 1,
             "contexto": "Caso escolar detallado y extenso...",
             "enunciado": "Pregunta analítica...",
-            "opciones": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+            "opciones": {{"A": "...", "B": "...", "C": "..."}},
             "correcta": "A",
             "justificacion": "Explicación jurídica...",
             "cita_legal": "Norma o artículo"
@@ -306,7 +332,8 @@ def obtener_instruccion_json(tema_exacto):
         """
     else:
         return f"""
-        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas de opción múltiple exclusivas del tema: {tema_exacto}.
+        Eres un evaluador riguroso de la CNSC. Genera EXACTAMENTE 10 preguntas complejas exclusivas del tema: {tema_exacto}.
+        Las opciones de respuesta deben ser SOLAMENTE TRES (A, B y C). NO incluyas opción D.
         Devuelve ÚNICAMENTE un arreglo JSON válido.
         Formato estricto:
         [
@@ -314,7 +341,7 @@ def obtener_instruccion_json(tema_exacto):
             "id": 1,
             "contexto": "Situación...",
             "enunciado": "Pregunta...",
-            "opciones": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+            "opciones": {{"A": "...", "B": "...", "C": "..."}},
             "correcta": "A",
             "justificacion": "Explicación lógica...",
             "cita_legal": "Regla aplicable"
@@ -328,15 +355,16 @@ def generar_teoria_y_ejemplos(tema_exacto):
     st.session_state.respuestas_mini = {}
     st.session_state.lista_ejemplos_extra = []
     
+    prompt_dinamico = PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
+    if "manual de funciones" in tema_exacto.lower():
+        prompt_dinamico += "\nIMPORTANTE: Enfoca toda la teoría y los ejemplos ÚNICAMENTE en el perfil de 'Docente de Aula'. No incluyas funciones de coordinadores o rectores."
+
     with st.spinner(f"Redactando clase magistral y materiales para: {tema_exacto}..."):
         try:
-            resp_texto = client.models.generate_content(
-                model="gemini-3.5-flash", 
-                contents=PROMPT_TEORIA_ESPECIFICA.format(tema=tema_exacto)
-            )
+            resp_texto = llamar_gemini_con_rotacion(contents=prompt_dinamico)
             contenido = resp_texto.text
         except Exception as e:
-            st.error(f"❌ Error de Gemini (Posible límite de cuota superado): {e}")
+            st.error(f"❌ Error al conectar con el servidor IA: {e}")
             return False
     
     enlaces, nom_cat = obtener_enlaces_por_area(tema_exacto)
@@ -354,17 +382,14 @@ def generar_teoria_y_ejemplos(tema_exacto):
     return True
 
 def generar_mini_simulacro_json(tema_exacto):
-    with st.spinner(f"Construyendo banco de 10 preguntas interactivas tipo CNSC para: {tema_exacto}..."):
+    with st.spinner(f"Construyendo banco de 10 preguntas interactivas tipo CNSC (Solo A,B,C) para: {tema_exacto}..."):
         try:
-            resp_json = client.models.generate_content(
-                model="gemini-3.5-flash",
-                contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}",
-                config=types.GenerateContentConfig(
-                    system_instruction=obtener_instruccion_json(tema_exacto),
-                    response_mime_type="application/json",
-                    temperature=0.7
-                )
+            cfg = types.GenerateContentConfig(
+                system_instruction=obtener_instruccion_json(tema_exacto),
+                response_mime_type="application/json",
+                temperature=0.7
             )
+            resp_json = llamar_gemini_con_rotacion(contents=f"Genera 10 preguntas JSON puras sobre: {tema_exacto}", config_params=cfg)
             texto_bruto = resp_json.text
             inicio_json = texto_bruto.find('[')
             fin_json = texto_bruto.rfind(']') + 1
@@ -427,7 +452,6 @@ def mostrar_diagnostico_y_retroalimentacion(revision_preguntas):
 if modo == "🗺️ Temario Detallado (Tema a Tema)":
     st.markdown('<div class="header-title">🗺️ Módulo de Estudio Detallado</div>', unsafe_allow_html=True)
     
-    # MEJORA 4: Anexar Guía 49 y Manual de Funciones
     TEMARIO_DESGLOSADO = {
         "📐 1. Aptitud Numérica": [
             "Porcentajes", "Regla de 3 Simple (Directa e Inversa)", "Regla de 3 Compuesta", 
@@ -474,7 +498,7 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 with st.spinner("Generando nuevos ejercicios resueltos..."):
                     try:
                         prompt_ej = f"Genera 3 NUEVOS problemas avanzados sobre '{st.session_state.tema_activo}' con su procedimiento detallado."
-                        resp_ej = client.models.generate_content(model="gemini-3.5-flash", contents=prompt_ej)
+                        resp_ej = llamar_gemini_con_rotacion(contents=prompt_ej)
                         st.session_state.lista_ejemplos_extra.append(resp_ej.text)
                         st.rerun()
                     except Exception as e:
@@ -514,7 +538,6 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                             resp = st.session_state.respuestas_mini.get(p['id'])
                             es_correcta = (resp == p['correcta'])
                             if es_correcta: puntaje += 1
-                            # MEJORA 3: Guardar también las opciones para el despliegue
                             revision.append({
                                 "Pregunta": p['enunciado'],
                                 "Opciones": p['opciones'], 
@@ -543,18 +566,18 @@ if modo == "🗺️ Temario Detallado (Tema a Tema)":
                 
                 mostrar_diagnostico_y_retroalimentacion(res['revision'])
                 
-                # MEJORA 3: Mostrar evaluación completa (pregunta, opciones y justificación)
                 st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
                 for i, r in enumerate(res['revision']):
                     icono = "✅" if r['Acierto'] else "❌"
                     color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
                     with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
                         st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
-                        st.write(f"**Pregunta:** {r['Pregunta']}")
-                        st.write("**Opciones:**")
+                        st.write(f"**Pregunta Evaluada:** {r['Pregunta']}")
+                        st.write("**Opciones Posibles:**")
                         if "Opciones" in r:
                             for k, v in r['Opciones'].items():
                                 st.write(f"- **{k})** {v}")
+                        st.write("---")
                         st.write(f"**Justificación:** {r['Justificación']}")
                         st.info(f"**Fundamento:** {r['Base']}")
                 
@@ -576,12 +599,10 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         if "resultado_ultimo_examen" in st.session_state: del st.session_state.resultado_ultimo_examen
         
         with st.spinner(f"Construyendo simulacro oficial de {area_sim}..."):
-            sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Devuelve SOLO JSON puro."
+            sys_inst = f"Eres evaluador experto de la CNSC. Genera 20 preguntas exclusivas y exigentes de '{area_sim}'. Las opciones deben ser SOLAMENTE TRES (A, B y C). Devuelve SOLO JSON puro: [ {{\"id\": 1, \"contexto\": \"...\", \"enunciado\": \"...\", \"opciones\": {{\"A\": \".\", \"B\": \".\", \"C\": \".\"}}, \"correcta\": \"A\", \"justificacion\": \"...\", \"cita_legal\": \"...\"}} ]"
             try:
-                response = client.models.generate_content(
-                    model="gemini-3.5-flash", contents="Genera 20 preguntas JSON puras",
-                    config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
-                )
+                cfg = types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
+                response = llamar_gemini_con_rotacion(contents="Genera 20 preguntas JSON puras", config_params=cfg)
                 texto_limpio = response.text[response.text.find('['):response.text.rfind(']')+1] if '[' in response.text else response.text.replace("```json", "").replace("```", "").strip()
                 st.session_state.examen_activo = json.loads(texto_limpio)
                 st.session_state.respuestas_usuario = {}
@@ -620,18 +641,23 @@ elif modo == "📝 Simulacro Oficial (20 Preguntas)":
         res = st.session_state.resultado_ultimo_examen
         st.success(f"📊 Calificación Final: {res['puntaje']} / {res['total']} ({(res['puntaje']/res['total'])*100:.1f}%)")
         mostrar_diagnostico_y_retroalimentacion(res['revision'])
+        
+        st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
         for i, r in enumerate(res['revision']):
             icono = "✅" if r['Acierto'] else "❌"
+            color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
             with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
-                st.write(f"**Pregunta:** {r['Pregunta']}")
+                st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
+                st.write(f"**Pregunta Evaluada:** {r['Pregunta']}")
+                st.write("**Opciones Posibles:**")
                 if "Opciones" in r:
                     for k, v in r['Opciones'].items():
                         st.write(f"- **{k})** {v}")
+                st.write("---")
                 st.write(f"**Justificación:** {r['Justificación']}")
 
 # --- MÓDULO 3: EXÁMENES POR ÁREA ESPECÍFICA ---
 elif modo == "🎯 Exámenes por Área Específica":
-    # MEJORA 5: Mantener y pulir exámenes específicos
     st.markdown('<div class="header-title">🎯 Módulo de Exámenes por Área Específica</div>', unsafe_allow_html=True)
     area_especifica = st.selectbox("Selecciona el área de profundización:", [
         "Excel y Ofimática Docente",
@@ -644,17 +670,14 @@ elif modo == "🎯 Exámenes por Área Específica":
         if "resultado_especifico" in st.session_state: del st.session_state.resultado_especifico
         
         with st.spinner(f"Construyendo banco especializado para: {area_especifica}..."):
-            # MEJORA 6: Instrucción estricta para Excel basada en exámenes anteriores de CNSC
             if "Excel" in area_especifica:
-                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas de opción múltiple JSON sobre '{area_especifica}'. Las preguntas DEBEN estar estrictamente basadas en preguntas reales de exámenes anteriores de la CNSC para docentes (ej. atajos de teclado, funciones básicas de Excel para promedios de notas, uso de correspondencia en Word, manejo de Drive escolar)."
+                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas JSON exclusivas de '{area_especifica}'. Las opciones deben ser SOLAMENTE TRES (A, B y C). Las preguntas DEBEN estar estrictamente basadas en preguntas reales de exámenes anteriores de la CNSC (ej. atajos de teclado, funciones de promedios, correspondencia, Drive escolar)."
             else:
-                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas JSON sobre '{area_especifica}'."
+                sys_inst = f"Eres evaluador experto de la CNSC. Genera 15 preguntas JSON exclusivas de '{area_especifica}'. Las opciones deben ser SOLAMENTE TRES (A, B y C)."
                 
             try:
-                response = client.models.generate_content(
-                    model="gemini-3.5-flash", contents="Genera 15 preguntas JSON puras",
-                    config=types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
-                )
+                cfg = types.GenerateContentConfig(system_instruction=sys_inst, response_mime_type="application/json", temperature=0.8)
+                response = llamar_gemini_con_rotacion(contents="Genera 15 preguntas JSON puras", config_params=cfg)
                 texto_limpio = response.text[response.text.find('['):response.text.rfind(']')+1] if '[' in response.text else response.text.replace("```json", "").replace("```", "").strip()
                 st.session_state.examen_especifico = json.loads(texto_limpio)
                 st.session_state.respuestas_especifico = {}
@@ -692,20 +715,25 @@ elif modo == "🎯 Exámenes por Área Específica":
         res_esp = st.session_state.resultado_especifico
         st.success(f"📊 Calificación Examen Específico: {res_esp['puntaje']} / {res_esp['total']}")
         mostrar_diagnostico_y_retroalimentacion(res_esp['revision'])
+        
+        st.markdown("### 📋 Detalle de Preguntas y Justificaciones")
         for i, r in enumerate(res_esp['revision']):
             icono = "✅" if r['Acierto'] else "❌"
+            color_txt = "#4ADE80" if r['Acierto'] else "#F87171"
             with st.expander(f"{icono} Pregunta {i+1} | Tu opción: {r['Tu Respuesta']} | Correcta: {r['Correcta']}"):
-                st.write(f"**Pregunta:** {r['Pregunta']}")
+                st.markdown(f"<span style='color:{color_txt}; font-weight:bold;'>{'Respuesta Correcta' if r['Acierto'] else 'Respuesta Incorrecta'}</span>", unsafe_allow_html=True)
+                st.write(f"**Pregunta Evaluada:** {r['Pregunta']}")
+                st.write("**Opciones Posibles:**")
                 if "Opciones" in r:
                     for k, v in r['Opciones'].items():
                         st.write(f"- **{k})** {v}")
+                st.write("---")
                 st.write(f"**Justificación:** {r['Justificación']}")
 
 # --- MÓDULO 4: HISTORIAL Y PROGRESO ---
 elif modo == "📅 Historial y Progreso":
     st.markdown('<div class="header-title">📅 Historial de Progreso y Diario de Estudio</div>', unsafe_allow_html=True)
     
-    # MEJORA 1: Generar historial de los minisimulacros (Se integra en las pestañas)
     tab1, tab2, tab3 = st.tabs(["📈 Simulacros Oficiales", "🎯 Minisimulacros", "📚 Diario de Estudio"])
     
     with tab1:
@@ -713,26 +741,25 @@ elif modo == "📅 Historial y Progreso":
         if examenes:
             df = pd.DataFrame(examenes)
             st.line_chart(df, y="Efectividad", x="Fecha", use_container_width=True)
-            # Eliminar columnas con objetos complejos de la vista principal de la tabla
             df_visual = df.drop(columns=["Detalle"], errors="ignore")
             st.dataframe(df_visual.iloc[::-1], use_container_width=True, hide_index=True)
             
-            # Si existen detalles guardados del examen
-            st.markdown("### Detalles del último simulacro oficial guardado")
-            ultimo = examenes[-1]
-            if "Detalle" in ultimo:
-                with st.expander(f"Ver detalle del {ultimo['Fecha']} - {ultimo['Área']}"):
-                    for q_idx, det in enumerate(ultimo['Detalle']):
-                        ic = "✅" if det.get('Acierto', False) else "❌"
-                        st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det.get('Pregunta', '')}")
-                        if "Opciones" in det:
-                            for k, v in det['Opciones'].items():
-                                st.write(f"- **{k})** {v}")
-                        st.write(f"*Tu respuesta:* {det.get('Tu Respuesta', '')} | *Correcta:* {det.get('Correcta', '')}")
-                        st.write(f"*Justificación:* {det.get('Justificación', '')}")
-                        st.write("---")
+            st.markdown("### Detalles de simulacros anteriores")
+            for exam in examenes[::-1]:
+                if "Detalle" in exam:
+                    with st.expander(f"📌 {exam['Fecha']} - {exam['Área']} — Puntaje: {exam['Puntaje']}/{exam['Total']}"):
+                        for q_idx, det in enumerate(exam['Detalle']):
+                            ic = "✅" if det.get('Acierto', False) else "❌"
+                            st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det.get('Pregunta', '')}")
+                            st.write("**Opciones Posibles:**")
+                            if "Opciones" in det:
+                                for k, v in det['Opciones'].items():
+                                    st.write(f"- **{k})** {v}")
+                            st.write(f"*Tu respuesta:* {det.get('Tu Respuesta', '')} | *Correcta:* {det.get('Correcta', '')}")
+                            st.write(f"*Justificación:* {det.get('Justificación', '')}")
+                            st.write("---")
         else:
-            st.info("No registra simulacros.")
+            st.info("No registra simulacros oficiales.")
             
     with tab2:
         minis = datos_globales[usuario].get("historial_minisimulacros", [])
@@ -742,7 +769,7 @@ elif modo == "📅 Historial y Progreso":
                     for q_idx, det in enumerate(m.get('Detalle', [])):
                         ic = "✅" if det.get('Acierto', False) else "❌"
                         st.markdown(f"**{ic} Pregunta {q_idx+1}:** {det.get('Pregunta', '')}")
-                        # MEJORA 3 también en el historial de minisimulacros (mostrar opciones)
+                        st.write("**Opciones Posibles:**")
                         if "Opciones" in det:
                             for k, v in det['Opciones'].items():
                                 st.write(f"- **{k})** {v}")
